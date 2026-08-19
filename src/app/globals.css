@@ -1,0 +1,36 @@
+@import "tailwindcss";
+@import "pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css";
+
+:root {
+  /* Trova 컬러 토큰 — 화면의 90%는 bg/ink, accent는 CTA/링크/배지 등 좁은 용도로만 */
+  --color-bg: #ffffff;
+  --color-bg-muted: #f7f7f5;
+  --color-border: #deded8;
+  --color-border-subtle: #edede8;
+  --color-ink: #16211d;
+  --color-ink-muted: #5f5e5a;
+  --color-accent: #e14a2b;
+  --color-accent-bg: #fcece6;
+  --color-kakao: #fee500;
+}
+
+@theme inline {
+  --color-bg: var(--color-bg);
+  --color-bg-muted: var(--color-bg-muted);
+  --color-border: var(--color-border);
+  --color-border-subtle: var(--color-border-subtle);
+  --color-ink: var(--color-ink);
+  --color-ink-muted: var(--color-ink-muted);
+  --color-accent: var(--color-accent);
+  --color-accent-bg: var(--color-accent-bg);
+  --color-kakao: var(--color-kakao);
+
+  --font-sans: "Pretendard Variable", var(--font-geist-sans), sans-serif;
+  --font-mono: var(--font-ibm-plex-mono), ui-monospace, monospace;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
