@@ -63,7 +63,15 @@ export default function PlaceDetailPage() {
         <p className="mt-6 text-sm text-ink-muted">해당 영상을 찾을 수 없어요.</p>
       ) : (
         <>
-          <h1 className="mb-6 mt-4 text-xl font-semibold text-ink">{title}</h1>
+          <h1 className="mt-4 text-xl font-semibold text-ink">{title}</h1>
+          <a
+            href={group[0].sourceUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mb-6 mt-1 inline-block truncate text-sm text-ink-muted hover:text-accent hover:underline"
+          >
+            원본 영상 보기 ↗
+          </a>
           {isItineraryGroup(group) ? (
             <ItineraryView places={group} />
           ) : (

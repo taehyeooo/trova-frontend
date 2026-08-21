@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { loadKakaoMaps } from "@/lib/kakaoMapLoader";
 
 export type MapPin = {
@@ -36,6 +36,33 @@ export function KakaoMap({
   useEffect(() => {
     onSelectRef.current = onSelect;
   }, [onSelect]);
+
+  // 지도가 아직 로드되기 전에 장소가 선택될 수 있다(카카오맵 SDK는 비동기 로드).
+  // 그 순간엔 highlightRef/mapRef가 비어 있어 아래 applySelection이 조용히 아무것도
+  // 못 하고 끝나는데, selectedId 자체는 그대로라 이후 재실행되지 않는다 — 그래서 지도
+  // 로딩이 끝난 직후에도 한 번 더 최신 선택 상태를 적용해줘야 한다.
+  const applySelection = useCallback((id: string | null | undefined) => {
+    const highlight = highlightRef.current;
+    const map = mapRef.current;
+    if (!highlight || !map) return;
+
+    if (!id) {
+      highlight.setMap(null);
+      return;
+    }
+
+    const marker = markersRef.current.get(id);
+    if (!marker) return;
+
+    map.panTo(marker.getPosition());
+    highlight.setPosition(marker.getPosition());
+    highlight.setMap(map);
+  }, []);
+
+  const selectedIdRef = useRef(selectedId);
+  useEffect(() => {
+    selectedIdRef.current = selectedId;
+  }, [selectedId]);
 
   // pins는 호출 측에서 매 렌더마다 새 배열로 넘어오는 경우가 많아, 참조가 아니라
   // 내용(id+좌표)이 실제로 바뀔 때만 지도를 다시 만들도록 키로 비교한다 — 그래야
@@ -98,6 +125,7 @@ export function KakaoMap({
         }
 
         map.setBounds(bounds);
+        applySelection(selectedIdRef.current);
       })
       .catch((err) => {
         if (!cancelled) {
@@ -108,25 +136,11 @@ export function KakaoMap({
     return () => {
       cancelled = true;
     };
-  }, [validPins]);
+  }, [validPins, applySelection]);
 
   useEffect(() => {
-    const highlight = highlightRef.current;
-    if (!highlight) return;
-
-    if (!selectedId) {
-      highlight.setMap(null);
-      return;
-    }
-
-    const map = mapRef.current;
-    const marker = markersRef.current.get(selectedId);
-    if (!map || !marker) return;
-
-    map.panTo(marker.getPosition());
-    highlight.setPosition(marker.getPosition());
-    highlight.setMap(map);
-  }, [selectedId]);
+    applySelection(selectedId);
+  }, [selectedId, applySelection]);
 
   if (validPins.length === 0) {
     return null;
