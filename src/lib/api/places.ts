@@ -26,6 +26,8 @@ type PlaceResponse = {
   sourceUrl: string;
   sourcePlatform: "INSTAGRAM" | "YOUTUBE";
   createdAt: string;
+  dayNumber: number | null;
+  orderInDay: number | null;
 };
 
 type PendingJobResponse = {
@@ -48,6 +50,8 @@ function fromPlaceResponse(place: PlaceResponse): SavedPlace {
     longitude: place.longitude ?? 0,
     status: "DONE",
     createdAt: place.createdAt,
+    dayNumber: place.dayNumber,
+    orderInDay: place.orderInDay,
   };
 }
 
@@ -63,6 +67,8 @@ function fromPendingJobResponse(job: PendingJobResponse): SavedPlace {
     longitude: 0,
     status: job.status,
     createdAt: job.createdAt,
+    dayNumber: null,
+    orderInDay: null,
   };
 }
 

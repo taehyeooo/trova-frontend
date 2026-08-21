@@ -11,4 +11,6 @@ export type SavedPlace = {
   longitude: number;
   status: "PENDING" | "PROCESSING" | "DONE" | "FAILED";
   createdAt: string;
+  dayNumber: number | null;
+  orderInDay: number | null;
 };
