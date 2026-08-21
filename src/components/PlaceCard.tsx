@@ -13,11 +13,24 @@ const PLATFORM_LABEL: Record<SavedPlace["sourcePlatform"], string> = {
   YOUTUBE: "유튜브",
 };
 
-export function PlaceCard({ place }: { place: SavedPlace }) {
+export function PlaceCard({
+  place,
+  selected = false,
+  onClick,
+}: {
+  place: SavedPlace;
+  selected?: boolean;
+  onClick?: () => void;
+}) {
   const isDone = place.status === "DONE";
 
   return (
-    <li className="rounded-xl border border-border-subtle p-4">
+    <li
+      onClick={onClick}
+      className={`rounded-xl border p-4 transition-colors ${
+        selected ? "border-accent bg-accent-bg" : "border-border-subtle"
+      } ${onClick ? "cursor-pointer" : ""}`}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate font-medium text-ink">
