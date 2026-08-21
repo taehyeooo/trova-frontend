@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { getPlaces } from "@/lib/api/places";
 import { PlaceCard } from "@/components/PlaceCard";
 import { useAuth } from "@/lib/auth/AuthContext";
@@ -59,7 +59,11 @@ export default function PlacesPage() {
                 <ItineraryView places={group} />
               </li>
             ) : (
-              group.map((place) => <PlaceCard key={place.id} place={place} />)
+              <Fragment key={sourceUrl}>
+                {group.map((place) => (
+                  <PlaceCard key={place.id} place={place} />
+                ))}
+              </Fragment>
             )
           )}
         </ul>
