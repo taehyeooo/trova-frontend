@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { loadKakaoMaps } from "@/lib/kakaoMapLoader";
 
 export type MapPin = {
@@ -13,17 +13,19 @@ export function KakaoMap({ pins }: { pins: MapPin[] }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const validPins = useMemo(
+    () => pins.filter((pin) => pin.latitude !== 0 || pin.longitude !== 0),
+    [pins]
+  );
+
   useEffect(() => {
+    if (validPins.length === 0) return;
+
     let cancelled = false;
 
     loadKakaoMaps()
       .then(() => {
         if (cancelled || !containerRef.current) return;
-
-        const validPins = pins.filter(
-          (pin) => pin.latitude !== 0 || pin.longitude !== 0
-        );
-        if (validPins.length === 0) return;
 
         const center = new window.kakao.maps.LatLng(
           validPins[0].latitude,
@@ -62,7 +64,11 @@ export function KakaoMap({ pins }: { pins: MapPin[] }) {
     return () => {
       cancelled = true;
     };
-  }, [pins]);
+  }, [validPins]);
+
+  if (validPins.length === 0) {
+    return null;
+  }
 
   if (error) {
     return (
