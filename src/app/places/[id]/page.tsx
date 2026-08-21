@@ -8,6 +8,8 @@ import { useAuth } from "@/lib/auth/AuthContext";
 import { isItineraryGroup } from "@/lib/itinerary";
 import { ItineraryView } from "@/components/ItineraryView";
 import { PlaceCard } from "@/components/PlaceCard";
+import { KakaoMap } from "@/components/KakaoMap";
+import { LoadingProgress } from "@/components/LoadingProgress";
 import type { SavedPlace } from "@/lib/types";
 
 export default function PlaceDetailPage() {
@@ -47,7 +49,9 @@ export default function PlaceDetailPage() {
       </Link>
 
       {loading ? (
-        <p className="mt-6 text-sm text-ink-muted">불러오는 중...</p>
+        <div className="mt-6">
+          <LoadingProgress />
+        </div>
       ) : !user ? (
         <p className="mt-6 text-sm text-ink-muted">
           이 페이지를 보려면{" "}
@@ -64,11 +68,23 @@ export default function PlaceDetailPage() {
           {isItineraryGroup(group) ? (
             <ItineraryView places={group} />
           ) : (
-            <ul className="flex flex-col gap-3">
-              {group.map((place) => (
-                <PlaceCard key={place.id} place={place} />
-              ))}
-            </ul>
+            <div className="flex flex-col gap-4">
+              <KakaoMap
+                pins={group.map((place) => ({
+                  id: place.id,
+                  latitude: place.latitude,
+                  longitude: place.longitude,
+                }))}
+              />
+              <p className="text-xs text-ink-muted">
+                핀은 영상에 나온 순서대로 직선으로 이었어요 — 실제 이동 경로는 아니에요.
+              </p>
+              <ul className="flex flex-col gap-3">
+                {group.map((place) => (
+                  <PlaceCard key={place.id} place={place} />
+                ))}
+              </ul>
+            </div>
           )}
         </>
       )}

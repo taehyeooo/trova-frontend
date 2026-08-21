@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { getPlaces } from "@/lib/api/places";
 import { VideoCard } from "@/components/VideoCard";
+import { LoadingProgress } from "@/components/LoadingProgress";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { buildVideoSummaries } from "@/lib/videoGroups";
 import type { SavedPlace } from "@/lib/types";
@@ -40,7 +41,7 @@ export default function PlacesPage() {
       <h1 className="mb-6 text-xl font-semibold text-ink">저장한 장소</h1>
 
       {loading ? (
-        <p className="text-sm text-ink-muted">불러오는 중...</p>
+        <LoadingProgress />
       ) : !user ? (
         <p className="text-sm text-ink-muted">
           저장한 장소를 보려면{" "}
