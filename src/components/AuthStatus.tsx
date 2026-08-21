@@ -31,7 +31,9 @@ export function AuthStatus() {
           className="h-6 w-6 rounded-full"
         />
       )}
-      <span className="text-sm text-ink-muted">{user.nickname ?? "사용자"}님</span>
+      <Link href="/mypage" className="text-sm text-ink-muted hover:text-ink">
+        {user.nickname ?? "사용자"}님
+      </Link>
       <button
         type="button"
         onClick={() => logout()}
