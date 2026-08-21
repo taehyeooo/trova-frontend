@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 import { getPlaces } from "@/lib/api/places";
 import { PlaceCard } from "@/components/PlaceCard";
 import { useAuth } from "@/lib/auth/AuthContext";
+import { groupBySourceUrl, isItineraryGroup } from "@/lib/itinerary";
+import { ItineraryView } from "@/components/ItineraryView";
 import type { SavedPlace } from "@/lib/types";
 
 export default function PlacesPage() {
@@ -51,9 +53,15 @@ export default function PlacesPage() {
         <p className="text-sm text-ink-muted">아직 저장한 장소가 없어요.</p>
       ) : (
         <ul className="flex flex-col gap-3">
-          {places.map((place) => (
-            <PlaceCard key={place.id} place={place} />
-          ))}
+          {Array.from(groupBySourceUrl(places).entries()).map(([sourceUrl, group]) =>
+            isItineraryGroup(group) ? (
+              <li key={sourceUrl}>
+                <ItineraryView places={group} />
+              </li>
+            ) : (
+              group.map((place) => <PlaceCard key={place.id} place={place} />)
+            )
+          )}
         </ul>
       )}
     </main>
