@@ -1,12 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { Fragment, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { getPlaces } from "@/lib/api/places";
-import { PlaceCard } from "@/components/PlaceCard";
+import { VideoCard } from "@/components/VideoCard";
 import { useAuth } from "@/lib/auth/AuthContext";
-import { groupBySourceUrl, isItineraryGroup } from "@/lib/itinerary";
-import { ItineraryView } from "@/components/ItineraryView";
+import { buildVideoSummaries } from "@/lib/videoGroups";
 import type { SavedPlace } from "@/lib/types";
 
 export default function PlacesPage() {
@@ -34,6 +33,7 @@ export default function PlacesPage() {
   }, [authLoading, user]);
 
   const loading = authLoading || (!!user && dataLoading);
+  const videos = buildVideoSummaries(places);
 
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-10">
@@ -49,23 +49,13 @@ export default function PlacesPage() {
           </Link>
           이 필요해요.
         </p>
-      ) : places.length === 0 ? (
+      ) : videos.length === 0 ? (
         <p className="text-sm text-ink-muted">아직 저장한 장소가 없어요.</p>
       ) : (
         <ul className="flex flex-col gap-3">
-          {Array.from(groupBySourceUrl(places).entries()).map(([sourceUrl, group]) =>
-            isItineraryGroup(group) ? (
-              <li key={sourceUrl}>
-                <ItineraryView places={group} />
-              </li>
-            ) : (
-              <Fragment key={sourceUrl}>
-                {group.map((place) => (
-                  <PlaceCard key={place.id} place={place} />
-                ))}
-              </Fragment>
-            )
-          )}
+          {videos.map((video) => (
+            <VideoCard key={video.sourceUrl} video={video} />
+          ))}
         </ul>
       )}
     </main>
