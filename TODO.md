@@ -21,11 +21,11 @@
 - [ ] 장소 상세 화면
 
 ## 3단계: 실제 백엔드 연동
-- [ ] SavedPlace에 `category` 필드 추가함(프론트 mock만) — 백엔드 SavedPlace 엔티티/파이프라인 출력과 맞는지 확인 필요
-- [ ] mock 함수를 실제 fetch 호출로 교체 (`// TODO: connect real API` 찾아서)
-- [ ] `GET /api/places/pending`이 정확히 어떤 status를 반환하는지 백엔드와 확인 (지금은 PENDING/PROCESSING만 mock)
-- [ ] CORS 이슈 확인
-- [ ] 로딩/에러 상태 처리
+- [x] SavedPlace `category` 필드 — 백엔드 응답의 실제 category 문자열(restaurant/cafe/attraction/lodging/shopping/other)에 맞춰 `CATEGORY_LABEL` 매핑 확정, 실제 데이터로 라벨 정상 표시 확인
+- [x] mock 함수를 실제 fetch 호출로 교체 — `feat/connect-places-api` 브랜치, 커밋 `a85bdd4`(PR #2). `lib/api/mock.ts` 제거, `lib/api/places.ts`가 실제 `/api/places`·`/api/places/pending`·`/api/shares` 호출
+- [x] `GET /api/places/pending` 반환 status 확인 — `PENDING`/`PROCESSING`/`FAILED` 세 가지(백엔드 `JobStatus`, PR #2에서 FAILED도 포함하도록 확장됨), 타입도 이에 맞춤
+- [x] CORS 이슈 확인 — 백엔드(8080)·프론트(3001) 로컬에서 실제로 같이 띄워서 세션 쿠키 포함 크로스 오리진 요청 전부 정상 동작 확인(로그인/장소 저장/조회/삭제 전체 플로우)
+- [x] 로딩/에러 상태 처리 — `/places`·`/mypage` 로딩 텍스트, `UrlInputForm`/`places.ts`/`users.ts` 에러 메시지 처리 반영
 
 - [x] 마이페이지 화면(`/mypage`) — 백엔드 `GET/DELETE /api/users/me` 연동. 프로필(닉네임/프로필이미지/로그인수단/가입일) 표시 + 회원탈퇴(브라우저 기본 confirm 확인 → 삭제 후 로그아웃 상태 반영하고 홈으로 이동). 헤더 닉네임을 `/mypage` 링크로 변경. `feat/mypage` 브랜치, 커밋 `e8efb71`. `npm run lint`/`npm run build` 통과, 비로그인 게이팅 화면은 브라우저로 확인함 — 로그인 상태 렌더링과 실제 탈퇴 플로우는 실계정 삭제라 자동화로는 못 해보고 코드 리뷰만 함(사용자가 직접 로그인해서 확인 필요)
 
