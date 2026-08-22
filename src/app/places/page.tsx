@@ -9,6 +9,8 @@ import { useAuth } from "@/lib/auth/AuthContext";
 import { buildVideoSummaries } from "@/lib/videoGroups";
 import type { SavedPlace } from "@/lib/types";
 
+const POLL_INTERVAL_MS = 4000;
+
 export default function PlacesPage() {
   const { user, loading: authLoading } = useAuth();
   const [places, setPlaces] = useState<SavedPlace[]>([]);
@@ -20,16 +22,29 @@ export default function PlacesPage() {
     }
 
     let cancelled = false;
-    getPlaces()
-      .then((result) => {
-        if (!cancelled) setPlaces(result);
-      })
-      .finally(() => {
-        if (!cancelled) setDataLoading(false);
-      });
+    let timeoutId: ReturnType<typeof setTimeout>;
+
+    // 처리중인 영상이 남아있는 동안엔 몇 초마다 다시 불러온다 — 그래야 상세 페이지를
+    // 오가지 않아도 "처리중" 상태가 저절로 "완료"로 바뀐다.
+    async function loadAndSchedule() {
+      const result = await getPlaces();
+      if (cancelled) return;
+      setPlaces(result);
+      setDataLoading(false);
+
+      const stillProcessing = result.some(
+        (place) => place.status === "PENDING" || place.status === "PROCESSING"
+      );
+      if (stillProcessing) {
+        timeoutId = setTimeout(loadAndSchedule, POLL_INTERVAL_MS);
+      }
+    }
+
+    loadAndSchedule();
 
     return () => {
       cancelled = true;
+      clearTimeout(timeoutId);
     };
   }, [authLoading, user]);
 

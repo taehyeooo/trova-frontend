@@ -14,4 +14,9 @@ export type SavedPlace = {
   createdAt: string;
   dayNumber: number | null;
   orderInDay: number | null;
+  phone: string | null;
+  address: string | null;
+  roadAddress: string | null;
+  kakaoCategoryName: string | null;
+  kakaoPlaceUrl: string | null;
 };

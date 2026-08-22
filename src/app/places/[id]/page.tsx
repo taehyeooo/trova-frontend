@@ -11,6 +11,8 @@ import { PlaceMapSection } from "@/components/PlaceMapSection";
 import { LoadingProgress } from "@/components/LoadingProgress";
 import type { SavedPlace } from "@/lib/types";
 
+const POLL_INTERVAL_MS = 4000;
+
 export default function PlaceDetailPage() {
   const params = useParams<{ id: string }>();
   const sourceUrl = decodeURIComponent(params.id);
@@ -24,18 +26,33 @@ export default function PlaceDetailPage() {
     }
 
     let cancelled = false;
-    getPlaces()
-      .then((result) => {
-        if (!cancelled) setPlaces(result);
-      })
-      .finally(() => {
-        if (!cancelled) setDataLoading(false);
-      });
+    let timeoutId: ReturnType<typeof setTimeout>;
+
+    // 이 영상이 아직 처리중이면 몇 초마다 다시 불러온다 — 탭을 오가지 않아도
+    // "처리중"이 저절로 "완료"로 바뀌도록.
+    async function loadAndSchedule() {
+      const result = await getPlaces();
+      if (cancelled) return;
+      setPlaces(result);
+      setDataLoading(false);
+
+      const stillProcessing = result.some(
+        (place) =>
+          place.sourceUrl === sourceUrl &&
+          (place.status === "PENDING" || place.status === "PROCESSING")
+      );
+      if (stillProcessing) {
+        timeoutId = setTimeout(loadAndSchedule, POLL_INTERVAL_MS);
+      }
+    }
+
+    loadAndSchedule();
 
     return () => {
       cancelled = true;
+      clearTimeout(timeoutId);
     };
-  }, [authLoading, user]);
+  }, [authLoading, user, sourceUrl]);
 
   const loading = authLoading || (!!user && dataLoading);
   const group = places.filter((place) => place.sourceUrl === sourceUrl);

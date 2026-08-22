@@ -29,14 +29,19 @@ type PlaceResponse = {
   createdAt: string;
   dayNumber: number | null;
   orderInDay: number | null;
+  phone: string | null;
+  address: string | null;
+  roadAddress: string | null;
+  kakaoCategoryName: string | null;
+  kakaoPlaceUrl: string | null;
 };
 
-type PendingJobResponse = {
+export type PendingJobResponse = {
   jobId: number;
   sourceUrl: string;
   title: string | null;
   sourcePlatform: "INSTAGRAM" | "YOUTUBE";
-  status: "PENDING" | "PROCESSING";
+  status: "PENDING" | "PROCESSING" | "FAILED";
   createdAt: string;
 };
 
@@ -55,6 +60,11 @@ function fromPlaceResponse(place: PlaceResponse): SavedPlace {
     createdAt: place.createdAt,
     dayNumber: place.dayNumber,
     orderInDay: place.orderInDay,
+    phone: place.phone,
+    address: place.address,
+    roadAddress: place.roadAddress,
+    kakaoCategoryName: place.kakaoCategoryName,
+    kakaoPlaceUrl: place.kakaoPlaceUrl,
   };
 }
 
@@ -73,10 +83,15 @@ function fromPendingJobResponse(job: PendingJobResponse): SavedPlace {
     createdAt: job.createdAt,
     dayNumber: null,
     orderInDay: null,
+    phone: null,
+    address: null,
+    roadAddress: null,
+    kakaoCategoryName: null,
+    kakaoPlaceUrl: null,
   };
 }
 
-export async function createShare(url: string): Promise<void> {
+export async function createShare(url: string): Promise<{ jobId: number }> {
   const res = await fetch(`${API_BASE_URL}/api/shares`, {
     method: "POST",
     credentials: "include",
@@ -94,23 +109,27 @@ export async function createShare(url: string): Promise<void> {
   if (!res.ok) {
     throw new Error(`POST /api/shares failed: ${res.status}`);
   }
+  return res.json();
+}
+
+export async function getPendingJobs(): Promise<PendingJobResponse[]> {
+  const res = await fetch(`${API_BASE_URL}/api/places/pending`, { credentials: "include" });
+  if (!res.ok) {
+    throw new Error(`GET /api/places/pending failed: ${res.status}`);
+  }
+  return res.json();
 }
 
 export async function getPlaces(): Promise<SavedPlace[]> {
-  const [placesRes, pendingRes] = await Promise.all([
+  const [placesRes, pending] = await Promise.all([
     fetch(`${API_BASE_URL}/api/places`, { credentials: "include" }),
-    fetch(`${API_BASE_URL}/api/places/pending`, { credentials: "include" }),
+    getPendingJobs(),
   ]);
 
   if (!placesRes.ok) {
     throw new Error(`GET /api/places failed: ${placesRes.status}`);
   }
-  if (!pendingRes.ok) {
-    throw new Error(`GET /api/places/pending failed: ${pendingRes.status}`);
-  }
-
   const places: PlaceResponse[] = await placesRes.json();
-  const pending: PendingJobResponse[] = await pendingRes.json();
 
   return [...pending.map(fromPendingJobResponse), ...places.map(fromPlaceResponse)].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
