@@ -24,23 +24,54 @@ export function ItineraryView({ places }: { places: SavedPlace[] }) {
 
   async function handleMoveDay(place: SavedPlace, dayNumber: number) {
     const previous = localPlaces;
+    const previousEmptyDays = emptyDayNumbers;
+    const sourceDay = place.dayNumber;
     setError(null);
     setLocalPlaces((current) =>
       current.map((p) => (p.id === place.id ? { ...p, dayNumber } : p))
     );
     setEmptyDayNumbers((current) => current.filter((d) => d !== dayNumber));
+
+    const sourceDayNowEmpty =
+      sourceDay !== null &&
+      sourceDay === activeDay &&
+      !localPlaces.some((p) => p.id !== place.id && p.dayNumber === sourceDay);
+    if (sourceDayNowEmpty) {
+      setActiveDay(dayNumber);
+    }
+
     try {
       const updated = await moveToDay(place.id, dayNumber);
       setLocalPlaces((current) => current.map((p) => (p.id === updated.id ? updated : p)));
     } catch {
       setLocalPlaces(previous);
+      setEmptyDayNumbers(previousEmptyDays);
       setError("장소를 옮기지 못했어요. 다시 시도해주세요.");
     }
   }
 
   async function handleReorder(place: SavedPlace, direction: "UP" | "DOWN") {
+    if (place.dayNumber === null) return;
+    const dayPlaces = days.get(place.dayNumber) ?? [];
+    const index = dayPlaces.findIndex((p) => p.id === place.id);
+    const swapIndex = direction === "UP" ? index - 1 : index + 1;
+    if (index < 0 || swapIndex < 0 || swapIndex >= dayPlaces.length) {
+      return; // 경계값 — no-op, 백엔드와 동일한 규칙
+    }
+    const neighbor = dayPlaces[swapIndex];
+
     const previous = localPlaces;
     setError(null);
+    const placeOrder = place.orderInDay;
+    const neighborOrder = neighbor.orderInDay;
+    setLocalPlaces((current) =>
+      current.map((p) => {
+        if (p.id === place.id) return { ...p, orderInDay: neighborOrder };
+        if (p.id === neighbor.id) return { ...p, orderInDay: placeOrder };
+        return p;
+      })
+    );
+
     try {
       const updated = await reorderPlace(place.id, direction);
       setLocalPlaces((current) => current.map((p) => (p.id === updated.id ? updated : p)));
