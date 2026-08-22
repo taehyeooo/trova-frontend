@@ -2,6 +2,7 @@ export type SavedPlace = {
   id: string;
   sourceUrl: string;
   sourcePlatform: "INSTAGRAM" | "YOUTUBE";
+  title: string | null;
   placeName: string;
   region: string;
   // 백엔드는 영어 enum(restaurant/cafe/attraction/lodging/shopping/other)을 반환 —
@@ -11,4 +12,6 @@ export type SavedPlace = {
   longitude: number;
   status: "PENDING" | "PROCESSING" | "DONE" | "FAILED";
   createdAt: string;
+  dayNumber: number | null;
+  orderInDay: number | null;
 };

@@ -24,13 +24,17 @@ type PlaceResponse = {
   latitude: number | null;
   longitude: number | null;
   sourceUrl: string;
+  title: string | null;
   sourcePlatform: "INSTAGRAM" | "YOUTUBE";
   createdAt: string;
+  dayNumber: number | null;
+  orderInDay: number | null;
 };
 
 type PendingJobResponse = {
   jobId: number;
   sourceUrl: string;
+  title: string | null;
   sourcePlatform: "INSTAGRAM" | "YOUTUBE";
   status: "PENDING" | "PROCESSING";
   createdAt: string;
@@ -41,6 +45,7 @@ function fromPlaceResponse(place: PlaceResponse): SavedPlace {
     id: String(place.id),
     sourceUrl: place.sourceUrl,
     sourcePlatform: place.sourcePlatform,
+    title: place.title,
     placeName: place.placeName,
     region: place.region ?? "",
     category: toCategoryLabel(place.category),
@@ -48,6 +53,8 @@ function fromPlaceResponse(place: PlaceResponse): SavedPlace {
     longitude: place.longitude ?? 0,
     status: "DONE",
     createdAt: place.createdAt,
+    dayNumber: place.dayNumber,
+    orderInDay: place.orderInDay,
   };
 }
 
@@ -56,6 +63,7 @@ function fromPendingJobResponse(job: PendingJobResponse): SavedPlace {
     id: String(job.jobId),
     sourceUrl: job.sourceUrl,
     sourcePlatform: job.sourcePlatform,
+    title: job.title,
     placeName: "",
     region: "",
     category: "",
@@ -63,6 +71,8 @@ function fromPendingJobResponse(job: PendingJobResponse): SavedPlace {
     longitude: 0,
     status: job.status,
     createdAt: job.createdAt,
+    dayNumber: null,
+    orderInDay: null,
   };
 }
 

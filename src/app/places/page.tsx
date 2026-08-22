@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { getPlaces } from "@/lib/api/places";
-import { PlaceCard } from "@/components/PlaceCard";
+import { VideoCard } from "@/components/VideoCard";
+import { LoadingProgress } from "@/components/LoadingProgress";
 import { useAuth } from "@/lib/auth/AuthContext";
+import { buildVideoSummaries } from "@/lib/videoGroups";
 import type { SavedPlace } from "@/lib/types";
 
 export default function PlacesPage() {
@@ -32,13 +34,14 @@ export default function PlacesPage() {
   }, [authLoading, user]);
 
   const loading = authLoading || (!!user && dataLoading);
+  const videos = buildVideoSummaries(places);
 
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-10">
       <h1 className="mb-6 text-xl font-semibold text-ink">저장한 장소</h1>
 
       {loading ? (
-        <p className="text-sm text-ink-muted">불러오는 중...</p>
+        <LoadingProgress />
       ) : !user ? (
         <p className="text-sm text-ink-muted">
           저장한 장소를 보려면{" "}
@@ -47,12 +50,12 @@ export default function PlacesPage() {
           </Link>
           이 필요해요.
         </p>
-      ) : places.length === 0 ? (
+      ) : videos.length === 0 ? (
         <p className="text-sm text-ink-muted">아직 저장한 장소가 없어요.</p>
       ) : (
         <ul className="flex flex-col gap-3">
-          {places.map((place) => (
-            <PlaceCard key={place.id} place={place} />
+          {videos.map((video) => (
+            <VideoCard key={video.sourceUrl} video={video} />
           ))}
         </ul>
       )}
