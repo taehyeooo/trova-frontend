@@ -18,6 +18,7 @@ function toCategoryLabel(category: string | null): string {
 
 type PlaceResponse = {
   id: number;
+  jobId: number;
   placeName: string;
   region: string | null;
   category: string | null;
@@ -48,6 +49,7 @@ export type PendingJobResponse = {
 function fromPlaceResponse(place: PlaceResponse): SavedPlace {
   return {
     id: String(place.id),
+    jobId: place.jobId,
     sourceUrl: place.sourceUrl,
     sourcePlatform: place.sourcePlatform,
     title: place.title,
@@ -71,6 +73,7 @@ function fromPlaceResponse(place: PlaceResponse): SavedPlace {
 function fromPendingJobResponse(job: PendingJobResponse): SavedPlace {
   return {
     id: String(job.jobId),
+    jobId: job.jobId,
     sourceUrl: job.sourceUrl,
     sourcePlatform: job.sourcePlatform,
     title: job.title,
@@ -131,7 +134,12 @@ export async function getPlaces(): Promise<SavedPlace[]> {
   }
   const places: PlaceResponse[] = await placesRes.json();
 
-  return [...pending.map(fromPendingJobResponse), ...places.map(fromPlaceResponse)].sort(
+  // 이미 완료된 영상(DONE 장소가 있는 sourceUrl)의 job이 재처리(예: 일정 생성 트리거)로
+  // 다시 PENDING/PROCESSING/FAILED에 나타나면, 완료된 장소 목록과 중복 표시되는 걸 막는다.
+  const doneSourceUrls = new Set(places.map((place) => place.sourceUrl));
+  const activePending = pending.filter((job) => !doneSourceUrls.has(job.sourceUrl));
+
+  return [...activePending.map(fromPendingJobResponse), ...places.map(fromPlaceResponse)].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
 }
@@ -159,4 +167,46 @@ export async function deletePlace(id: string): Promise<void> {
   if (!res.ok) {
     throw new Error(`DELETE /api/places/${id} failed: ${res.status}`);
   }
+}
+
+export async function generateItinerary(jobId: number): Promise<void> {
+  const res = await fetch(`${API_BASE_URL}/api/places/videos/${jobId}/itinerary`, {
+    method: "POST",
+    credentials: "include",
+  });
+
+  if (!res.ok) {
+    throw new Error(`POST /api/places/videos/${jobId}/itinerary failed: ${res.status}`);
+  }
+}
+
+export async function moveToDay(placeId: string, dayNumber: number): Promise<SavedPlace> {
+  const res = await fetch(`${API_BASE_URL}/api/places/${placeId}/day`, {
+    method: "PATCH",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ dayNumber }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`PATCH /api/places/${placeId}/day failed: ${res.status}`);
+  }
+  return fromPlaceResponse(await res.json());
+}
+
+export async function reorderPlace(
+  placeId: string,
+  direction: "UP" | "DOWN"
+): Promise<SavedPlace> {
+  const res = await fetch(`${API_BASE_URL}/api/places/${placeId}/order`, {
+    method: "PATCH",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ direction }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`PATCH /api/places/${placeId}/order failed: ${res.status}`);
+  }
+  return fromPlaceResponse(await res.json());
 }

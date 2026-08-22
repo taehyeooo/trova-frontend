@@ -1,5 +1,6 @@
 export type SavedPlace = {
   id: string;
+  jobId: number;
   sourceUrl: string;
   sourcePlatform: "INSTAGRAM" | "YOUTUBE";
   title: string | null;
