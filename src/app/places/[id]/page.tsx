@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { getPlaces } from "@/lib/api/places";
+import { generateItinerary, getPlaces } from "@/lib/api/places";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { isItineraryGroup } from "@/lib/itinerary";
 import { ItineraryView } from "@/components/ItineraryView";
@@ -19,6 +19,9 @@ export default function PlaceDetailPage() {
   const { user, loading: authLoading } = useAuth();
   const [places, setPlaces] = useState<SavedPlace[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
+  const router = useRouter();
+  const [generating, setGenerating] = useState(false);
+  const [generateError, setGenerateError] = useState<string | null>(null);
 
   useEffect(() => {
     if (authLoading || !user) {
@@ -56,6 +59,23 @@ export default function PlaceDetailPage() {
 
   const loading = authLoading || (!!user && dataLoading);
   const group = places.filter((place) => place.sourceUrl === sourceUrl);
+
+  const canGenerateItinerary =
+    group.length > 0 && group.every((place) => place.status === "DONE") && !isItineraryGroup(group);
+
+  async function handleGenerateItinerary() {
+    if (group.length === 0) return;
+    setGenerating(true);
+    setGenerateError(null);
+    try {
+      await generateItinerary(group[0].jobId);
+      router.push(`/processing/${group[0].jobId}`);
+    } catch {
+      setGenerateError("일정 생성 요청에 실패했어요. 다시 시도해주세요.");
+      setGenerating(false);
+    }
+  }
+
   const title = group.find((place) => place.title)?.title ?? "제목 없음";
 
   return (
@@ -89,6 +109,19 @@ export default function PlaceDetailPage() {
           >
             원본 영상 보기 ↗
           </a>
+          {canGenerateItinerary && (
+            <div className="mb-4">
+              <button
+                type="button"
+                onClick={handleGenerateItinerary}
+                disabled={generating}
+                className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60"
+              >
+                {generating ? "일정 생성 중..." : "일정 짜기"}
+              </button>
+              {generateError && <p className="mt-2 text-sm text-accent">{generateError}</p>}
+            </div>
+          )}
           {isItineraryGroup(group) ? (
             <ItineraryView places={group} />
           ) : (
