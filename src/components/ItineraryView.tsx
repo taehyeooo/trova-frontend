@@ -11,18 +11,25 @@ export function ItineraryView({ places }: { places: SavedPlace[] }) {
   const [editing, setEditing] = useState(false);
   const [emptyDayNumbers, setEmptyDayNumbers] = useState<number[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [actionPending, setActionPending] = useState(false);
 
   const days = groupByDay(localPlaces);
   const dayNumbers = Array.from(new Set([...days.keys(), ...emptyDayNumbers])).sort((a, b) => a - b);
-  // 호출 측(page.tsx)이 isItineraryGroup()로 걸러서 dayNumbers가 비지 않는 그룹만 넘겨준다는
-  // 전제 + key={sourceUrl}로 그룹이 바뀔 때마다 이 컴포넌트가 새로 마운트된다는 전제 위에서
-  // activeDay를 한 번만 초기화한다.
+  // activeDay를 한 번만 초기화해도 안전한 이유: 부모(page.tsx)의 폴링 루프는 이 소스 영상에
+  // PENDING/PROCESSING 상태인 place가 있는 동안만 계속되는데, 그 상태는 이 영상에 대한 place
+  // row가 아직 하나도 없을 때만 존재한다(Task 6 de-dup 필터). 반면 ItineraryView는
+  // isItineraryGroup(group)이 true일 때만 렌더링되는데, 이는 dayNumber가 채워진 place row가
+  // 이미 존재해야 성립한다. 즉 "폴링이 계속 도는 상태"와 "ItineraryView가 마운트된 상태"는
+  // 서로 배타적이라 이 컴포넌트가 살아있는 동안 dayNumbers가 바뀌어 재초기화가 필요해질 일이
+  // 없다. (de-dup 필터 로직이 바뀌면 이 전제도 같이 재검토해야 한다.)
   const [activeDay, setActiveDay] = useState(dayNumbers[0]);
 
   const activePlaces = days.get(activeDay) ?? [];
   const unassignedPlaces = localPlaces.filter((place) => place.dayNumber === null);
 
   async function handleMoveDay(place: SavedPlace, dayNumber: number) {
+    if (actionPending) return;
+    setActionPending(true);
     const previous = localPlaces;
     const previousEmptyDays = emptyDayNumbers;
     const sourceDay = place.dayNumber;
@@ -47,10 +54,13 @@ export function ItineraryView({ places }: { places: SavedPlace[] }) {
       setLocalPlaces(previous);
       setEmptyDayNumbers(previousEmptyDays);
       setError("장소를 옮기지 못했어요. 다시 시도해주세요.");
+    } finally {
+      setActionPending(false);
     }
   }
 
   async function handleReorder(place: SavedPlace, direction: "UP" | "DOWN") {
+    if (actionPending) return;
     if (place.dayNumber === null) return;
     const dayPlaces = days.get(place.dayNumber) ?? [];
     const index = dayPlaces.findIndex((p) => p.id === place.id);
@@ -60,6 +70,7 @@ export function ItineraryView({ places }: { places: SavedPlace[] }) {
     }
     const neighbor = dayPlaces[swapIndex];
 
+    setActionPending(true);
     const previous = localPlaces;
     setError(null);
     const placeOrder = place.orderInDay;
@@ -78,6 +89,8 @@ export function ItineraryView({ places }: { places: SavedPlace[] }) {
     } catch {
       setLocalPlaces(previous);
       setError("순서를 바꾸지 못했어요. 다시 시도해주세요.");
+    } finally {
+      setActionPending(false);
     }
   }
 
@@ -156,6 +169,7 @@ export function ItineraryView({ places }: { places: SavedPlace[] }) {
         availableDayNumbers={dayNumbers}
         onMoveDay={handleMoveDay}
         onReorder={handleReorder}
+        disabled={actionPending}
       />
 
       {unassignedPlaces.length > 0 && (
@@ -166,6 +180,7 @@ export function ItineraryView({ places }: { places: SavedPlace[] }) {
             editable={editing}
             availableDayNumbers={dayNumbers}
             onMoveDay={handleMoveDay}
+            disabled={actionPending}
           />
         </div>
       )}

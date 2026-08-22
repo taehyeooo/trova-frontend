@@ -11,6 +11,7 @@ type PlaceMapSectionProps = {
   availableDayNumbers?: number[];
   onMoveDay?: (place: SavedPlace, dayNumber: number) => void;
   onReorder?: (place: SavedPlace, direction: "UP" | "DOWN") => void;
+  disabled?: boolean;
 };
 
 export function PlaceMapSection({
@@ -19,6 +20,7 @@ export function PlaceMapSection({
   availableDayNumbers = [],
   onMoveDay,
   onReorder,
+  disabled = false,
 }: PlaceMapSectionProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -51,7 +53,7 @@ export function PlaceMapSection({
                   <div className="flex gap-1">
                     <button
                       type="button"
-                      disabled={index === 0}
+                      disabled={disabled || index === 0}
                       onClick={() => onReorder(place, "UP")}
                       className="rounded border border-border-subtle px-2 py-0.5 text-xs text-ink-muted hover:text-ink disabled:opacity-30"
                     >
@@ -59,7 +61,7 @@ export function PlaceMapSection({
                     </button>
                     <button
                       type="button"
-                      disabled={index === places.length - 1}
+                      disabled={disabled || index === places.length - 1}
                       onClick={() => onReorder(place, "DOWN")}
                       className="rounded border border-border-subtle px-2 py-0.5 text-xs text-ink-muted hover:text-ink disabled:opacity-30"
                     >
@@ -71,6 +73,7 @@ export function PlaceMapSection({
                   <select
                     value={place.dayNumber ?? ""}
                     onChange={(e) => onMoveDay(place, Number(e.target.value))}
+                    disabled={disabled}
                     className="rounded border border-border-subtle bg-bg px-2 py-0.5 text-xs text-ink-muted"
                   >
                     <option value="" disabled>

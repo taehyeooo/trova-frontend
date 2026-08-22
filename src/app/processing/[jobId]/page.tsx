@@ -28,6 +28,8 @@ export default function ProcessingPage() {
 
     let cancelled = false;
     let timeoutId: ReturnType<typeof setTimeout>;
+    const missCountRef = { current: 0 };
+    const MAX_INITIAL_MISSES = 3;
 
     async function poll() {
       const jobs = await getPendingJobs();
@@ -36,6 +38,15 @@ export default function ProcessingPage() {
       const job = jobs.find((j) => String(j.jobId) === params.jobId);
 
       if (!job) {
+        // 아직 이 job을 한 번도 못 봤다면(sourceUrlRef가 비어있다면), 비동기 처리가 아직
+        // PENDING/PROCESSING으로 못 넘어간 것일 수 있다 — 바로 완료로 간주하지 않고 몇 번 더
+        // 재시도한다. (예: 일정 생성 트리거는 202 응답 후 markProcessing이 비동기로 늦게
+        // 반영될 수 있어서, 첫 폴링에서 이미 "없음"으로 보일 수 있다.)
+        if (sourceUrlRef.current === null && missCountRef.current < MAX_INITIAL_MISSES) {
+          missCountRef.current += 1;
+          timeoutId = setTimeout(poll, POLL_INTERVAL_MS);
+          return;
+        }
         // 더 이상 대기 목록에 없다 = 처리가 끝나서 저장 장소로 넘어갔다는 뜻.
         const sourceUrl = sourceUrlRef.current;
         router.replace(sourceUrl ? `/places/${encodeURIComponent(sourceUrl)}` : "/places");
