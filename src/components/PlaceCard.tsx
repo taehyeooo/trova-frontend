@@ -31,7 +31,7 @@ export function PlaceCard({
   const hasLinks = place.phone || place.kakaoPlaceUrl;
 
   return (
-    <li
+    <div
       onClick={onClick}
       className={`rounded-xl border p-4 transition-colors ${
         selected ? "border-accent bg-accent-bg" : "border-border-subtle"
@@ -108,6 +108,6 @@ export function PlaceCard({
           {new Date(place.createdAt).toISOString().slice(0, 10)}
         </time>
       </div>
-    </li>
+    </div>
   );
 }
