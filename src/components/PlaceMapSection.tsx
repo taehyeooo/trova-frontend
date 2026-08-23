@@ -12,6 +12,7 @@ type PlaceMapSectionProps = {
   onMoveDay?: (place: SavedPlace, dayNumber: number) => void;
   onReorder?: (place: SavedPlace, direction: "UP" | "DOWN") => void;
   disabled?: boolean;
+  color?: string;
 };
 
 export function PlaceMapSection({
@@ -21,6 +22,7 @@ export function PlaceMapSection({
   onMoveDay,
   onReorder,
   disabled = false,
+  color,
 }: PlaceMapSectionProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -34,6 +36,7 @@ export function PlaceMapSection({
         }))}
         selectedId={selectedId}
         onSelect={setSelectedId}
+        color={color}
       />
       <p className="text-xs text-ink-muted">
         핀은 영상에 나온 순서대로 직선으로 이었어요 — 실제 이동 경로는 아니에요.

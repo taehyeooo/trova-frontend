@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { SavedPlace } from "@/lib/types";
-import { groupByDay } from "@/lib/itinerary";
+import { getDayColor, groupByDay } from "@/lib/itinerary";
 import { PlaceMapSection } from "@/components/PlaceMapSection";
 import { moveToDay, reorderPlace } from "@/lib/api/places";
 
@@ -170,6 +170,7 @@ export function ItineraryView({ places }: { places: SavedPlace[] }) {
         onMoveDay={handleMoveDay}
         onReorder={handleReorder}
         disabled={actionPending}
+        color={getDayColor(activeDay)}
       />
 
       {unassignedPlaces.length > 0 && (

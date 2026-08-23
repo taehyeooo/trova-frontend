@@ -26,7 +26,7 @@ declare global {
         }) => { setMap: (map: unknown | null) => void };
         CustomOverlay: new (options: {
           position: unknown;
-          content: string;
+          content: string | HTMLElement;
           zIndex?: number;
         }) => {
           setMap: (map: unknown | null) => void;

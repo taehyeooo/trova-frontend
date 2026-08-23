@@ -11,24 +11,51 @@ export type MapPin = {
 
 // 카카오맵 SDK에는 마커 bounce 애니메이션(Animation.BOUNCE) 같은 API가 없다 —
 // 구글맵과 달리 CustomOverlay로 직접 하이라이트 링을 그려서 선택 표시를 한다.
-const HIGHLIGHT_HTML =
-  '<div style="width:28px;height:28px;border-radius:9999px;background:rgba(225,74,43,0.28);border:2px solid #e14a2b;"></div>';
+function buildHighlightHtml(color: string): string {
+  return `<div style="width:28px;height:28px;border-radius:9999px;background:${color}48;border:2px solid ${color};"></div>`;
+}
+
+function buildPinElement(order: number, color: string, onClick: () => void): HTMLDivElement {
+  const el = document.createElement("div");
+  el.textContent = String(order);
+  el.style.cssText = `
+    width: 26px;
+    height: 26px;
+    border-radius: 9999px;
+    background: ${color};
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    font-family: inherit;
+    border: 2px solid #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.35);
+    cursor: pointer;
+  `;
+  el.addEventListener("click", onClick);
+  return el;
+}
 
 export function KakaoMap({
   pins,
   selectedId,
   onSelect,
+  color = "#FF6B4A",
 }: {
   pins: MapPin[];
   selectedId?: string | null;
   onSelect?: (id: string) => void;
+  color?: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
   const mapRef = useRef<InstanceType<typeof window.kakao.maps.Map> | null>(null);
-  const markersRef = useRef<Map<string, InstanceType<typeof window.kakao.maps.Marker>>>(
-    new Map()
-  );
+  const pinOverlaysRef = useRef<
+    Map<string, InstanceType<typeof window.kakao.maps.CustomOverlay>>
+  >(new Map());
+  const positionsRef = useRef<Map<string, unknown>>(new Map());
   const highlightRef = useRef<InstanceType<typeof window.kakao.maps.CustomOverlay> | null>(
     null
   );
@@ -51,11 +78,11 @@ export function KakaoMap({
       return;
     }
 
-    const marker = markersRef.current.get(id);
-    if (!marker) return;
+    const position = positionsRef.current.get(id);
+    if (!position) return;
 
-    map.panTo(marker.getPosition());
-    highlight.setPosition(marker.getPosition());
+    map.panTo(position);
+    highlight.setPosition(position);
     highlight.setMap(map);
   }, []);
 
@@ -94,24 +121,35 @@ export function KakaoMap({
         mapRef.current = map;
 
         const bounds = new window.kakao.maps.LatLngBounds();
-        const markers = new Map<string, InstanceType<typeof window.kakao.maps.Marker>>();
-        const path = validPins.map((pin) => {
+        const pinOverlays = new Map<
+          string,
+          InstanceType<typeof window.kakao.maps.CustomOverlay>
+        >();
+        const positions = new Map<string, unknown>();
+        const path = validPins.map((pin, index) => {
           const position = new window.kakao.maps.LatLng(pin.latitude, pin.longitude);
-          const marker = new window.kakao.maps.Marker({ position, map });
-          window.kakao.maps.event.addListener(marker, "click", () => {
+          const element = buildPinElement(index + 1, color, () => {
             onSelectRef.current?.(pin.id);
           });
-          markers.set(pin.id, marker);
+          const overlay = new window.kakao.maps.CustomOverlay({
+            position,
+            content: element,
+            zIndex: 2,
+          });
+          overlay.setMap(map);
+          pinOverlays.set(pin.id, overlay);
+          positions.set(pin.id, position);
           bounds.extend(position);
           return position;
         });
-        markersRef.current = markers;
+        pinOverlaysRef.current = pinOverlays;
+        positionsRef.current = positions;
 
         highlightRef.current = new window.kakao.maps.CustomOverlay({
           position: validPins[0]
             ? new window.kakao.maps.LatLng(validPins[0].latitude, validPins[0].longitude)
             : center,
-          content: HIGHLIGHT_HTML,
+          content: buildHighlightHtml(color),
           zIndex: 1,
         });
 
@@ -119,7 +157,7 @@ export function KakaoMap({
           new window.kakao.maps.Polyline({
             path,
             strokeWeight: 3,
-            strokeColor: "#FF6B4A",
+            strokeColor: color,
             strokeOpacity: 0.8,
           }).setMap(map);
         }
@@ -136,7 +174,7 @@ export function KakaoMap({
     return () => {
       cancelled = true;
     };
-  }, [validPins, applySelection]);
+  }, [validPins, color, applySelection]);
 
   useEffect(() => {
     applySelection(selectedId);
