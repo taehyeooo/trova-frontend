@@ -33,7 +33,11 @@ declare global {
           setPosition: (latlng: unknown) => void;
         };
         event: {
-          addListener: (target: unknown, type: string, handler: () => void) => void;
+          addListener: (
+            target: unknown,
+            type: string,
+            handler: (event: { latLng: { getLat: () => number; getLng: () => number } }) => void
+          ) => void;
         };
       };
     };

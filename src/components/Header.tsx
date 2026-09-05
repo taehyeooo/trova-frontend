@@ -11,6 +11,7 @@ export function Header() {
   const pathname = usePathname();
   const isPlacesActive = pathname === "/places";
   const isTripsActive = pathname === "/trips" || pathname.startsWith("/trips/");
+  const isDiscoverActive = pathname === "/discover" || pathname === "/bookmarks";
 
   return (
     <header className="border-b border-border-subtle">
@@ -72,6 +73,33 @@ export function Header() {
                 <path d="M3 10h18M8 2v4M16 2v4" />
               </svg>
               내 여행
+            </Link>
+          )}
+
+          {user && (
+            <Link
+              href="/discover"
+              aria-current={isDiscoverActive ? "page" : undefined}
+              className={`group flex items-center gap-1.5 text-sm font-medium transition-colors ${
+                isDiscoverActive ? "text-accent" : "text-ink-muted hover:text-ink"
+              }`}
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+                className={`transition-transform ${isDiscoverActive ? "" : "group-hover:-translate-y-0.5"}`}
+              >
+                <circle cx="11" cy="11" r="7" />
+                <path d="m21 21-4.3-4.3" />
+              </svg>
+              추천
             </Link>
           )}
         </div>

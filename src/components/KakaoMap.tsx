@@ -43,11 +43,17 @@ export function KakaoMap({
   selectedId,
   onSelect,
   color = "#FF6B4A",
+  center,
+  onMapClick,
 }: {
   pins: MapPin[];
   selectedId?: string | null;
   onSelect?: (id: string) => void;
   color?: string;
+  /** pins가 비어 있을 때도 지도를 보여줘야 하는 경우(예: 위치 찍기)의 기본 중심 좌표 */
+  center?: { latitude: number; longitude: number };
+  /** 지도 클릭으로 좌표를 찍게 하고 싶을 때(예: 주변 추천) 전달 */
+  onMapClick?: (latitude: number, longitude: number) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
@@ -101,8 +107,13 @@ export function KakaoMap({
     [pinsKey]
   );
 
+  const onMapClickRef = useRef(onMapClick);
   useEffect(() => {
-    if (validPins.length === 0) return;
+    onMapClickRef.current = onMapClick;
+  }, [onMapClick]);
+
+  useEffect(() => {
+    if (validPins.length === 0 && !center) return;
 
     let cancelled = false;
 
@@ -110,15 +121,25 @@ export function KakaoMap({
       .then(() => {
         if (cancelled || !containerRef.current) return;
 
-        const center = new window.kakao.maps.LatLng(
-          validPins[0].latitude,
-          validPins[0].longitude
-        );
+        const initialCenter =
+          validPins.length > 0
+            ? new window.kakao.maps.LatLng(validPins[0].latitude, validPins[0].longitude)
+            : new window.kakao.maps.LatLng(center!.latitude, center!.longitude);
         const map = new window.kakao.maps.Map(containerRef.current, {
-          center,
+          center: initialCenter,
           level: 6,
         });
         mapRef.current = map;
+
+        if (onMapClickRef.current) {
+          window.kakao.maps.event.addListener(
+            map,
+            "click",
+            (mouseEvent: { latLng: { getLat(): number; getLng(): number } }) => {
+              onMapClickRef.current?.(mouseEvent.latLng.getLat(), mouseEvent.latLng.getLng());
+            }
+          );
+        }
 
         const bounds = new window.kakao.maps.LatLngBounds();
         const pinOverlays = new Map<
@@ -146,9 +167,7 @@ export function KakaoMap({
         positionsRef.current = positions;
 
         highlightRef.current = new window.kakao.maps.CustomOverlay({
-          position: validPins[0]
-            ? new window.kakao.maps.LatLng(validPins[0].latitude, validPins[0].longitude)
-            : center,
+          position: initialCenter,
           content: buildHighlightHtml(color),
           zIndex: 1,
         });
@@ -162,7 +181,9 @@ export function KakaoMap({
           }).setMap(map);
         }
 
-        map.setBounds(bounds);
+        if (validPins.length > 0) {
+          map.setBounds(bounds);
+        }
         applySelection(selectedIdRef.current);
       })
       .catch((err) => {
@@ -174,13 +195,14 @@ export function KakaoMap({
     return () => {
       cancelled = true;
     };
-  }, [validPins, color, applySelection]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [validPins, color, applySelection, center?.latitude, center?.longitude]);
 
   useEffect(() => {
     applySelection(selectedId);
   }, [selectedId, applySelection]);
 
-  if (validPins.length === 0) {
+  if (validPins.length === 0 && !center) {
     return null;
   }
 
