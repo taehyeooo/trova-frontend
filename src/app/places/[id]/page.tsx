@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { generateItinerary, getPlaces } from "@/lib/api/places";
+import { confirmTrip } from "@/lib/api/trips";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { isItineraryGroup } from "@/lib/itinerary";
 import { ItineraryView } from "@/components/ItineraryView";
@@ -22,6 +23,11 @@ export default function PlaceDetailPage() {
   const router = useRouter();
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
+  const [showTripForm, setShowTripForm] = useState(false);
+  const [tripTitle, setTripTitle] = useState("");
+  const [tripStartDate, setTripStartDate] = useState("");
+  const [confirmingTrip, setConfirmingTrip] = useState(false);
+  const [tripError, setTripError] = useState<string | null>(null);
 
   useEffect(() => {
     if (authLoading || !user) {
@@ -78,6 +84,20 @@ export default function PlaceDetailPage() {
 
   const title = group.find((place) => place.title)?.title ?? "제목 없음";
 
+  async function handleConfirmTrip(e: React.FormEvent) {
+    e.preventDefault();
+    if (group.length === 0 || confirmingTrip) return;
+    setConfirmingTrip(true);
+    setTripError(null);
+    try {
+      const trip = await confirmTrip(group[0].jobId, tripTitle.trim() || title, tripStartDate || null);
+      router.push(`/trips/${trip.id}`);
+    } catch {
+      setTripError("여행 확정에 실패했어요. 다시 시도해주세요.");
+      setConfirmingTrip(false);
+    }
+  }
+
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-10">
       <Link href="/places" className="text-sm text-ink-muted hover:text-ink">
@@ -122,6 +142,56 @@ export default function PlaceDetailPage() {
               {generateError && <p className="mt-2 text-sm text-accent">{generateError}</p>}
             </div>
           )}
+          {isItineraryGroup(group) && (
+            <div className="mb-4">
+              {!showTripForm ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTripTitle(title);
+                    setTripStartDate(new Date().toISOString().slice(0, 10));
+                    setShowTripForm(true);
+                  }}
+                  className="rounded-lg border border-accent px-4 py-2 text-sm font-medium text-accent hover:bg-accent-bg"
+                >
+                  여행으로 만들기
+                </button>
+              ) : (
+                <form
+                  onSubmit={handleConfirmTrip}
+                  className="flex flex-col gap-2 rounded-lg border border-border-subtle p-3 sm:flex-row sm:items-end"
+                >
+                  <label className="flex flex-1 flex-col gap-1 text-xs text-ink-muted">
+                    여행 이름
+                    <input
+                      type="text"
+                      value={tripTitle}
+                      onChange={(e) => setTripTitle(e.target.value)}
+                      className="rounded-lg border border-border px-3 py-2 text-sm text-ink outline-none focus:border-accent"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1 text-xs text-ink-muted">
+                    출발일(선택)
+                    <input
+                      type="date"
+                      value={tripStartDate}
+                      onChange={(e) => setTripStartDate(e.target.value)}
+                      className="rounded-lg border border-border px-3 py-2 text-sm text-ink outline-none focus:border-accent"
+                    />
+                  </label>
+                  <button
+                    type="submit"
+                    disabled={confirmingTrip}
+                    className="shrink-0 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60"
+                  >
+                    {confirmingTrip ? "확정 중..." : "확정"}
+                  </button>
+                </form>
+              )}
+              {tripError && <p className="mt-2 text-sm text-accent">{tripError}</p>}
+            </div>
+          )}
+
           {isItineraryGroup(group) ? (
             <ItineraryView places={group} />
           ) : (
