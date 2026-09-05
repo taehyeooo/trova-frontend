@@ -10,6 +10,7 @@ export function Header() {
   const { user } = useAuth();
   const pathname = usePathname();
   const isPlacesActive = pathname === "/places";
+  const isTripsActive = pathname === "/trips" || pathname.startsWith("/trips/");
 
   return (
     <header className="border-b border-border-subtle">
@@ -44,6 +45,33 @@ export function Header() {
                 <circle cx="12" cy="10" r="3" />
               </svg>
               저장한 장소
+            </Link>
+          )}
+
+          {user && (
+            <Link
+              href="/trips"
+              aria-current={isTripsActive ? "page" : undefined}
+              className={`group flex items-center gap-1.5 text-sm font-medium transition-colors ${
+                isTripsActive ? "text-accent" : "text-ink-muted hover:text-ink"
+              }`}
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+                className={`transition-transform ${isTripsActive ? "" : "group-hover:-translate-y-0.5"}`}
+              >
+                <rect x="3" y="4" width="18" height="18" rx="2" />
+                <path d="M3 10h18M8 2v4M16 2v4" />
+              </svg>
+              내 여행
             </Link>
           )}
         </div>

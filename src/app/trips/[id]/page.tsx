@@ -38,8 +38,8 @@ export default function TripDetailPage() {
 
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-10">
-      <Link href="/places" className="text-sm text-ink-muted hover:text-ink">
-        ← 저장한 장소
+      <Link href="/trips" className="text-sm text-ink-muted hover:text-ink">
+        ← 내 여행
       </Link>
 
       {loading ? (
