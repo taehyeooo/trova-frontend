@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { SavedPlace } from "@/lib/types";
 import { getDayColor, groupByDay } from "@/lib/itinerary";
 import { PlaceMapSection } from "@/components/PlaceMapSection";
-import { moveToDay, reorderPlace } from "@/lib/api/places";
+import { moveToDay, optimizeRoute, reorderPlace } from "@/lib/api/places";
 
 export function ItineraryView({ places }: { places: SavedPlace[] }) {
   const [localPlaces, setLocalPlaces] = useState(places);
@@ -101,6 +101,24 @@ export function ItineraryView({ places }: { places: SavedPlace[] }) {
     setActiveDay(nextDay);
   }
 
+  async function handleOptimizeRoute() {
+    if (actionPending || activePlaces.length < 2) return;
+    const jobId = activePlaces[0]?.jobId;
+    if (jobId === undefined) return;
+
+    setActionPending(true);
+    setError(null);
+    try {
+      const updated = await optimizeRoute(jobId, activeDay);
+      const updatedById = new Map(updated.map((p) => [p.id, p]));
+      setLocalPlaces((current) => current.map((p) => updatedById.get(p.id) ?? p));
+    } catch {
+      setError("동선을 최적화하지 못했어요. 다시 시도해주세요.");
+    } finally {
+      setActionPending(false);
+    }
+  }
+
   function handleDeleteDay(day: number) {
     setEmptyDayNumbers((current) => current.filter((d) => d !== day));
     if (activeDay === day) {
@@ -151,13 +169,23 @@ export function ItineraryView({ places }: { places: SavedPlace[] }) {
             </button>
           )}
         </div>
-        <button
-          type="button"
-          onClick={() => setEditing((current) => !current)}
-          className="text-sm font-medium text-accent hover:underline"
-        >
-          {editing ? "편집 완료" : "편집"}
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={handleOptimizeRoute}
+            disabled={actionPending || activePlaces.length < 2}
+            className="text-sm font-medium text-accent hover:underline disabled:opacity-40 disabled:hover:no-underline"
+          >
+            동선 최적화
+          </button>
+          <button
+            type="button"
+            onClick={() => setEditing((current) => !current)}
+            className="text-sm font-medium text-accent hover:underline"
+          >
+            {editing ? "편집 완료" : "편집"}
+          </button>
+        </div>
       </div>
 
       {error && <p className="text-sm text-accent">{error}</p>}

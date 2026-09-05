@@ -210,3 +210,16 @@ export async function reorderPlace(
   }
   return fromPlaceResponse(await res.json());
 }
+
+export async function optimizeRoute(jobId: number, day: number): Promise<SavedPlace[]> {
+  const res = await fetch(`${API_BASE_URL}/api/places/videos/${jobId}/days/${day}/optimize-route`, {
+    method: "POST",
+    credentials: "include",
+  });
+
+  if (!res.ok) {
+    throw new Error(`POST /api/places/videos/${jobId}/days/${day}/optimize-route failed: ${res.status}`);
+  }
+  const places: PlaceResponse[] = await res.json();
+  return places.map(fromPlaceResponse);
+}
