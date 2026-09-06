@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { getPlaceDetails, type PlaceDetail, type RecommendedPlace } from "@/lib/api/recommendations";
 import { CategoryBadge } from "@/components/CategoryBadge";
-import { getCategoryVisual } from "@/lib/placeCategoryVisual";
 import { renderHighlightedText } from "@/lib/richText";
 
 const MOOD_LABEL: Record<string, string> = {
@@ -60,7 +59,6 @@ export function RecommendedPlaceCard({
   const [reviewDetail, setReviewDetail] = useState<PlaceDetail | null>(null);
   const [reviewLoading, setReviewLoading] = useState(false);
   const [showRawReviews, setShowRawReviews] = useState(false);
-  const visual = getCategoryVisual(place.category);
 
   async function handleOpenReviews() {
     setShowReviewModal(true);
@@ -78,13 +76,6 @@ export function RecommendedPlaceCard({
 
   return (
     <div className="rounded-xl border border-border-subtle p-4">
-      <div
-        className={`mb-3 flex h-20 items-center justify-center rounded-lg text-3xl ${visual.bgClass}`}
-        aria-hidden="true"
-      >
-        {visual.icon}
-      </div>
-
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate font-medium text-ink">{place.name}</p>
