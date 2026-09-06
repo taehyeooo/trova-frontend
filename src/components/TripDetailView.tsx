@@ -1,24 +1,53 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { KakaoMap, type MapPin } from "@/components/KakaoMap";
 import { getDayColor } from "@/lib/itinerary";
+import { addBookmark, listBookmarks, type Bookmark } from "@/lib/api/bookmarks";
+import { getPlaceDetails, searchPlaces, type RecommendedPlace } from "@/lib/api/recommendations";
 import {
   addTripPlace,
   checkWeather,
   getTrip,
   removeTripPlace,
   reorderTripPlace,
+  updateTripPlaceDetails,
   type TripDetail,
 } from "@/lib/api/trips";
+
+const TRANSPORT_LABEL: Record<string, string> = {
+  WALK: "도보",
+  TRANSIT: "대중교통",
+  CAR: "차량",
+};
 
 export function TripDetailView({ trip: initialTrip }: { trip: TripDetail }) {
   const [trip, setTrip] = useState(initialTrip);
   const [activeDay, setActiveDay] = useState(trip.days[0]?.day ?? 1);
+  const [activeTab, setActiveTab] = useState<"search" | "bookmarks">("search");
   const [query, setQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<RecommendedPlace[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
+  const [bookmarkedPlaceIds, setBookmarkedPlaceIds] = useState<Set<number>>(new Set());
+  const [expandedPlaceId, setExpandedPlaceId] = useState<number | null>(null);
+  const [reviewSummaries, setReviewSummaries] = useState<Map<number, { summary: string; snippets: string[] }>>(
+    new Map()
+  );
+  const [detailsLoadingId, setDetailsLoadingId] = useState<number | null>(null);
+  const [editingField, setEditingField] = useState<{ placeId: number; field: "time" | "transport" | "memo" } | null>(
+    null
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [weatherMessage, setWeatherMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    listBookmarks().then((result) => {
+      setBookmarks(result);
+      setBookmarkedPlaceIds(new Set(result.map((b) => b.placeId)));
+    });
+  }, []);
 
   const dayColor = getDayColor(activeDay);
   const activeDayData = trip.days.find((d) => d.day === activeDay);
@@ -32,19 +61,64 @@ export function TripDetailView({ trip: initialTrip }: { trip: TripDetail }) {
     setTrip(fresh);
   }
 
-  async function handleAddPlace(e: React.FormEvent) {
+  async function handleSearch(e: React.FormEvent) {
     e.preventDefault();
-    if (!query.trim() || busy) return;
-    setBusy(true);
+    if (!query.trim() || searching) return;
+    setSearching(true);
     setError(null);
     try {
-      await addTripPlace(trip.id, activeDay, query.trim());
-      await reload();
-      setQuery("");
+      const results = await searchPlaces(query.trim());
+      setSearchResults(results);
     } catch {
       setError("장소를 찾지 못했어요. 다른 검색어로 시도해보세요.");
     } finally {
+      setSearching(false);
+    }
+  }
+
+  async function handleAddPlace(googlePlaceId: string) {
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await addTripPlace(trip.id, activeDay, googlePlaceId);
+      await reload();
+    } catch {
+      setError("장소를 추가하지 못했어요.");
+    } finally {
       setBusy(false);
+    }
+  }
+
+  async function handleToggleDetails(placeId: number) {
+    if (expandedPlaceId === placeId) {
+      setExpandedPlaceId(null);
+      return;
+    }
+    setExpandedPlaceId(placeId);
+    if (reviewSummaries.has(placeId)) return;
+    setDetailsLoadingId(placeId);
+    try {
+      const detail = await getPlaceDetails(placeId);
+      setReviewSummaries((current) =>
+        new Map(current).set(placeId, { summary: detail.reviewSummary, snippets: detail.reviewSnippets })
+      );
+    } catch {
+      setReviewSummaries((current) =>
+        new Map(current).set(placeId, { summary: "리뷰를 불러오지 못했어요.", snippets: [] })
+      );
+    } finally {
+      setDetailsLoadingId(null);
+    }
+  }
+
+  async function handleToggleBookmark(placeId: number) {
+    if (bookmarkedPlaceIds.has(placeId)) return;
+    try {
+      await addBookmark(placeId);
+      setBookmarkedPlaceIds((current) => new Set(current).add(placeId));
+    } catch {
+      setError("찜하기에 실패했어요.");
     }
   }
 
@@ -73,6 +147,24 @@ export function TripDetailView({ trip: initialTrip }: { trip: TripDetail }) {
       setError("순서를 바꾸지 못했어요.");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function handleUpdateDetails(
+    placeId: number,
+    patch: Parameters<typeof updateTripPlaceDetails>[1]
+  ) {
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await updateTripPlaceDetails(placeId, patch);
+      await reload();
+    } catch {
+      setError("저장하지 못했어요.");
+    } finally {
+      setBusy(false);
+      setEditingField(null);
     }
   }
 
@@ -128,42 +220,137 @@ export function TripDetailView({ trip: initialTrip }: { trip: TripDetail }) {
         {places.map((place, index) => (
           <li
             key={place.id}
-            className="flex items-center justify-between gap-3 rounded-lg border border-border-subtle p-3"
+            className="flex flex-col gap-2 rounded-lg border border-border-subtle p-3"
           >
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium text-ink">
-                {place.visitOrder}. {place.placeName}
-              </p>
-              {place.address && <p className="truncate text-xs text-ink-muted">{place.address}</p>}
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-ink">
+                  {place.visitOrder}. {place.placeName}
+                </p>
+                {place.address && <p className="truncate text-xs text-ink-muted">{place.address}</p>}
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleReorder(place.id, "UP")}
+                  disabled={busy || index === 0}
+                  className="text-xs text-ink-muted hover:text-ink disabled:opacity-30"
+                  aria-label="위로 이동"
+                >
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleReorder(place.id, "DOWN")}
+                  disabled={busy || index === places.length - 1}
+                  className="text-xs text-ink-muted hover:text-ink disabled:opacity-30"
+                  aria-label="아래로 이동"
+                >
+                  ↓
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleRemove(place.id)}
+                  disabled={busy}
+                  className="text-xs text-ink-muted hover:text-accent"
+                  aria-label="삭제"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
-            <div className="flex shrink-0 items-center gap-2">
-              <button
-                type="button"
-                onClick={() => handleReorder(place.id, "UP")}
-                disabled={busy || index === 0}
-                className="text-xs text-ink-muted hover:text-ink disabled:opacity-30"
-                aria-label="위로 이동"
-              >
-                ↑
-              </button>
-              <button
-                type="button"
-                onClick={() => handleReorder(place.id, "DOWN")}
-                disabled={busy || index === places.length - 1}
-                className="text-xs text-ink-muted hover:text-ink disabled:opacity-30"
-                aria-label="아래로 이동"
-              >
-                ↓
-              </button>
-              <button
-                type="button"
-                onClick={() => handleRemove(place.id)}
-                disabled={busy}
-                className="text-xs text-ink-muted hover:text-accent"
-                aria-label="삭제"
-              >
-                ✕
-              </button>
+
+            <div className="flex flex-wrap items-center gap-3 text-xs text-ink-muted">
+              {editingField?.placeId === place.id && editingField.field === "time" ? (
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const form = e.currentTarget;
+                    const start = (form.elements.namedItem("start") as HTMLInputElement).value;
+                    const end = (form.elements.namedItem("end") as HTMLInputElement).value;
+                    handleUpdateDetails(place.id, {
+                      visitStartTime: start || undefined,
+                      visitEndTime: end || undefined,
+                    });
+                  }}
+                  className="flex items-center gap-1"
+                >
+                  <input
+                    name="start"
+                    type="time"
+                    defaultValue={place.visitStartTime?.slice(0, 5) ?? ""}
+                    className="rounded border border-border px-1 py-0.5 text-xs"
+                  />
+                  <span>~</span>
+                  <input
+                    name="end"
+                    type="time"
+                    defaultValue={place.visitEndTime?.slice(0, 5) ?? ""}
+                    className="rounded border border-border px-1 py-0.5 text-xs"
+                  />
+                  <button type="submit" className="text-accent">저장</button>
+                </form>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setEditingField({ placeId: place.id, field: "time" })}
+                  className="hover:text-ink"
+                >
+                  {place.visitStartTime && place.visitEndTime
+                    ? `${place.visitStartTime.slice(0, 5)}~${place.visitEndTime.slice(0, 5)}`
+                    : "시간 추가"}
+                </button>
+              )}
+
+              {editingField?.placeId === place.id && editingField.field === "transport" ? (
+                <select
+                  autoFocus
+                  defaultValue={place.arrivalTransportMode ?? ""}
+                  onChange={(e) =>
+                    handleUpdateDetails(place.id, {
+                      arrivalTransportMode: e.target.value as "WALK" | "TRANSIT" | "CAR",
+                    })
+                  }
+                  onBlur={() => setEditingField(null)}
+                  className="rounded border border-border px-1 py-0.5 text-xs"
+                >
+                  <option value="" disabled>
+                    선택
+                  </option>
+                  <option value="WALK">도보</option>
+                  <option value="TRANSIT">대중교통</option>
+                  <option value="CAR">차량</option>
+                </select>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setEditingField({ placeId: place.id, field: "transport" })}
+                  className="hover:text-ink"
+                >
+                  {place.arrivalTransportMode ? TRANSPORT_LABEL[place.arrivalTransportMode] : "이동수단 추가"}
+                </button>
+              )}
+
+              {editingField?.placeId === place.id && editingField.field === "memo" ? (
+                <input
+                  autoFocus
+                  type="text"
+                  defaultValue={place.memo ?? ""}
+                  onBlur={(e) => handleUpdateDetails(place.id, { memo: e.target.value })}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                  }}
+                  className="rounded border border-border px-1 py-0.5 text-xs"
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setEditingField({ placeId: place.id, field: "memo" })}
+                  className="max-w-[10rem] truncate hover:text-ink"
+                >
+                  {place.memo || "메모 추가"}
+                </button>
+              )}
             </div>
           </li>
         ))}
@@ -174,22 +361,134 @@ export function TripDetailView({ trip: initialTrip }: { trip: TripDetail }) {
         )}
       </ul>
 
-      <form onSubmit={handleAddPlace} className="flex gap-2">
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="장소 이름으로 검색 (예: 강남역 스타벅스)"
-          className="flex-1 rounded-lg border border-border px-3 py-2 text-sm outline-none focus:border-accent"
-        />
-        <button
-          type="submit"
-          disabled={busy || !query.trim()}
-          className="shrink-0 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60"
-        >
-          추가
-        </button>
-      </form>
+      <div className="flex flex-col gap-3 border-t border-border-subtle pt-4">
+        <div className="flex gap-4 text-sm font-medium">
+          <button
+            type="button"
+            onClick={() => setActiveTab("search")}
+            className={activeTab === "search" ? "text-accent" : "text-ink-muted hover:text-ink"}
+          >
+            검색
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("bookmarks")}
+            className={activeTab === "bookmarks" ? "text-accent" : "text-ink-muted hover:text-ink"}
+          >
+            찜한 장소
+          </button>
+        </div>
+
+        {activeTab === "search" ? (
+          <>
+            <form onSubmit={handleSearch} className="flex gap-2">
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="장소 이름으로 검색 (예: 경복궁)"
+                className="flex-1 rounded-lg border border-border px-3 py-2 text-sm outline-none focus:border-accent"
+              />
+              <button
+                type="submit"
+                disabled={searching || !query.trim()}
+                className="shrink-0 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60"
+              >
+                {searching ? "검색 중..." : "검색"}
+              </button>
+            </form>
+            <ul className="flex flex-col gap-2">
+              {searchResults.map((place) => (
+                <li key={place.id} className="rounded-lg border border-border-subtle p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-ink">{place.name}</p>
+                      {place.address && <p className="truncate text-xs text-ink-muted">{place.address}</p>}
+                      {(place.rating !== null || place.userRatingCount !== null) && (
+                        <p className="mt-0.5 text-xs text-ink-muted">
+                          {place.rating !== null && `⭐ ${place.rating.toFixed(1)}`}
+                          {place.userRatingCount !== null && ` (리뷰 ${place.userRatingCount}개)`}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleToggleBookmark(place.id)}
+                        aria-label={bookmarkedPlaceIds.has(place.id) ? "찜한 장소" : "찜하기"}
+                        className="text-lg leading-none"
+                      >
+                        {bookmarkedPlaceIds.has(place.id) ? "❤️" : "🤍"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleAddPlace(place.googlePlaceId)}
+                        disabled={busy}
+                        className="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 disabled:opacity-60"
+                      >
+                        추가
+                      </button>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleToggleDetails(place.id)}
+                    className="mt-2 text-xs text-accent hover:underline"
+                  >
+                    {expandedPlaceId === place.id ? "상세 접기" : "상세보기"}
+                  </button>
+                  {expandedPlaceId === place.id && (
+                    <div className="mt-1 flex flex-col gap-1">
+                      {detailsLoadingId === place.id ? (
+                        <p className="text-xs text-ink-muted">리뷰 요약을 불러오는 중...</p>
+                      ) : (
+                        <>
+                          <p className="text-xs text-ink-muted">{reviewSummaries.get(place.id)?.summary}</p>
+                          {(reviewSummaries.get(place.id)?.snippets.length ?? 0) > 0 && (
+                            <div className="flex flex-col gap-1">
+                              {reviewSummaries
+                                .get(place.id)
+                                ?.snippets.slice(0, 3)
+                                .map((snippet, i) => (
+                                  <p
+                                    key={i}
+                                    className="border-l-2 border-border-subtle pl-2 text-xs text-ink-muted"
+                                  >
+                                    &ldquo;{snippet}&rdquo;
+                                  </p>
+                                ))}
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {bookmarks.length === 0 && <li className="text-sm text-ink-muted">아직 찜한 장소가 없어요.</li>}
+            {bookmarks.map((bookmark) => (
+              <li
+                key={bookmark.id}
+                className="flex items-center justify-between gap-3 rounded-lg border border-border-subtle p-3"
+              >
+                <p className="truncate text-sm font-medium text-ink">{bookmark.placeName}</p>
+                <button
+                  type="button"
+                  onClick={() => handleAddPlace(bookmark.googlePlaceId)}
+                  disabled={busy}
+                  className="shrink-0 rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 disabled:opacity-60"
+                >
+                  추가
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }
