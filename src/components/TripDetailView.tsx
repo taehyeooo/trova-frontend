@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { KakaoMap, type MapPin } from "@/components/KakaoMap";
 import { getDayColor } from "@/lib/itinerary";
 import { addBookmark, listBookmarks, type Bookmark } from "@/lib/api/bookmarks";
-import { getPlaceDetails, searchPlaces, type RecommendedPlace } from "@/lib/api/recommendations";
+import { getPlaceDetails, searchPlaces, type PlaceDetail, type RecommendedPlace } from "@/lib/api/recommendations";
 import {
   addTripPlace,
   checkWeather,
@@ -31,9 +31,12 @@ export function TripDetailView({ trip: initialTrip }: { trip: TripDetail }) {
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
   const [bookmarkedPlaceIds, setBookmarkedPlaceIds] = useState<Set<number>>(new Set());
   const [expandedPlaceId, setExpandedPlaceId] = useState<number | null>(null);
-  const [reviewSummaries, setReviewSummaries] = useState<Map<number, { summary: string; snippets: string[] }>>(
-    new Map()
-  );
+  const [reviewSummaries, setReviewSummaries] = useState<
+    Map<
+      number,
+      Pick<PlaceDetail, "highlights" | "pros" | "cons" | "hours" | "fee" | "tips" | "checklist" | "reviewSnippets">
+    >
+  >(new Map());
   const [detailsLoadingId, setDetailsLoadingId] = useState<number | null>(null);
   const [editingField, setEditingField] = useState<{ placeId: number; field: "time" | "transport" | "memo" } | null>(
     null
@@ -103,11 +106,29 @@ export function TripDetailView({ trip: initialTrip }: { trip: TripDetail }) {
     try {
       const detail = await getPlaceDetails(placeId);
       setReviewSummaries((current) =>
-        new Map(current).set(placeId, { summary: detail.reviewSummary, snippets: detail.reviewSnippets })
+        new Map(current).set(placeId, {
+          highlights: detail.highlights,
+          pros: detail.pros,
+          cons: detail.cons,
+          hours: detail.hours,
+          fee: detail.fee,
+          tips: detail.tips,
+          checklist: detail.checklist,
+          reviewSnippets: detail.reviewSnippets,
+        })
       );
     } catch {
       setReviewSummaries((current) =>
-        new Map(current).set(placeId, { summary: "리뷰를 불러오지 못했어요.", snippets: [] })
+        new Map(current).set(placeId, {
+          highlights: "리뷰를 불러오지 못했어요.",
+          pros: [],
+          cons: [],
+          hours: null,
+          fee: null,
+          tips: [],
+          checklist: [],
+          reviewSnippets: [],
+        })
       );
     } finally {
       setDetailsLoadingId(null);
@@ -441,28 +462,91 @@ export function TripDetailView({ trip: initialTrip }: { trip: TripDetail }) {
                     {expandedPlaceId === place.id ? "상세 접기" : "상세보기"}
                   </button>
                   {expandedPlaceId === place.id && (
-                    <div className="mt-1 flex flex-col gap-1">
+                    <div className="mt-1 flex flex-col gap-2">
                       {detailsLoadingId === place.id ? (
                         <p className="text-xs text-ink-muted">리뷰 요약을 불러오는 중...</p>
                       ) : (
-                        <>
-                          <p className="text-xs text-ink-muted">{reviewSummaries.get(place.id)?.summary}</p>
-                          {(reviewSummaries.get(place.id)?.snippets.length ?? 0) > 0 && (
-                            <div className="flex flex-col gap-1">
-                              {reviewSummaries
-                                .get(place.id)
-                                ?.snippets.slice(0, 3)
-                                .map((snippet, i) => (
-                                  <p
-                                    key={i}
-                                    className="border-l-2 border-border-subtle pl-2 text-xs text-ink-muted"
-                                  >
-                                    &ldquo;{snippet}&rdquo;
-                                  </p>
-                                ))}
-                            </div>
-                          )}
-                        </>
+                        (() => {
+                          const detail = reviewSummaries.get(place.id);
+                          if (!detail) return null;
+                          return (
+                            <>
+                              <p className="text-xs italic text-ink">{detail.highlights}</p>
+
+                              {(detail.pros.length > 0 || detail.cons.length > 0) && (
+                                <div className="grid grid-cols-2 gap-2">
+                                  {detail.pros.length > 0 && (
+                                    <div>
+                                      <p className="text-[11px] font-medium text-ink-muted">👍 좋은 점</p>
+                                      <ul>
+                                        {detail.pros.map((p, i) => (
+                                          <li key={i} className="text-xs text-ink">
+                                            {p}
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  )}
+                                  {detail.cons.length > 0 && (
+                                    <div>
+                                      <p className="text-[11px] font-medium text-ink-muted">👎 아쉬운 점</p>
+                                      <ul>
+                                        {detail.cons.map((c, i) => (
+                                          <li key={i} className="text-xs text-ink">
+                                            {c}
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              {(detail.hours || detail.fee) && (
+                                <div className="flex flex-col gap-0.5 text-xs text-ink">
+                                  {detail.hours && <p>🕐 {detail.hours}</p>}
+                                  {detail.fee && <p>💰 {detail.fee}</p>}
+                                </div>
+                              )}
+
+                              {detail.tips.length > 0 && (
+                                <div className="rounded-md bg-accent-bg p-2">
+                                  <p className="text-[11px] font-medium text-accent">💡 꿀팁</p>
+                                  <ul>
+                                    {detail.tips.map((tip, i) => (
+                                      <li key={i} className="text-xs text-ink">
+                                        {tip}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+
+                              {detail.checklist.length > 0 && (
+                                <ul className="flex flex-col gap-0.5">
+                                  {detail.checklist.map((item, i) => (
+                                    <li key={i} className="text-xs text-ink">
+                                      ☐ {item}
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
+
+                              {detail.reviewSnippets.length > 0 && (
+                                <div className="flex flex-col gap-1">
+                                  {detail.reviewSnippets.slice(0, 3).map((snippet, i) => (
+                                    <p
+                                      key={i}
+                                      className="border-l-2 border-border-subtle pl-2 text-xs text-ink-muted"
+                                    >
+                                      &ldquo;{snippet}&rdquo;
+                                    </p>
+                                  ))}
+                                </div>
+                              )}
+                            </>
+                          );
+                        })()
                       )}
                     </div>
                   )}

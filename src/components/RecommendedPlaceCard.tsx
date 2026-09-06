@@ -18,6 +18,32 @@ const SPACE_LABEL: Record<string, string> = {
   MIXED: "실내외",
 };
 
+const FAILED_DETAIL: Pick<PlaceDetail, "highlights" | "pros" | "cons" | "hours" | "fee" | "tips" | "checklist" | "reviewSnippets"> = {
+  highlights: "리뷰를 불러오지 못했어요.",
+  pros: [],
+  cons: [],
+  hours: null,
+  fee: null,
+  tips: [],
+  checklist: [],
+  reviewSnippets: [],
+};
+
+function ProsConsList({ label, items }: { label: string; items: string[] }) {
+  return (
+    <div>
+      <p className="mb-1 text-xs font-medium text-ink-muted">{label}</p>
+      <ul className="flex flex-col gap-1">
+        {items.map((item, i) => (
+          <li key={i} className="text-xs text-ink">
+            {item}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export function RecommendedPlaceCard({
   place,
   bookmarked,
@@ -42,7 +68,7 @@ export function RecommendedPlaceCard({
       const detail = await getPlaceDetails(place.id);
       setReviewDetail(detail);
     } catch {
-      setReviewDetail({ ...place, reviewSummary: "리뷰를 불러오지 못했어요.", reviewSnippets: [] });
+      setReviewDetail({ ...place, ...FAILED_DETAIL });
     } finally {
       setReviewLoading(false);
     }
@@ -109,7 +135,7 @@ export function RecommendedPlaceCard({
           onClick={() => setShowReviewModal(false)}
         >
           <div
-            className="max-h-[80vh] w-full max-w-md overflow-y-auto rounded-xl border border-border-subtle bg-bg p-5 shadow-lg"
+            className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-xl border border-border-subtle bg-bg p-5 shadow-lg"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-3 flex items-start justify-between gap-3">
@@ -130,21 +156,82 @@ export function RecommendedPlaceCard({
             {reviewLoading ? (
               <p className="text-sm text-ink-muted">리뷰를 불러오는 중...</p>
             ) : (
-              <>
-                <p className="text-sm text-ink-muted">{reviewDetail?.reviewSummary}</p>
-                {reviewDetail && reviewDetail.reviewSnippets.length > 0 && (
-                  <ul className="mt-3 flex flex-col gap-2">
-                    {reviewDetail.reviewSnippets.map((snippet, i) => (
-                      <li
-                        key={`${place.id}-${i}`}
-                        className="border-l-2 border-border-subtle pl-2 text-xs text-ink-muted"
-                      >
-                        “{snippet}”
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </>
+              reviewDetail && (
+                <div className="flex flex-col gap-4">
+                  <p className="text-sm italic text-ink">{reviewDetail.highlights}</p>
+
+                  {reviewDetail.pros.length > 0 && reviewDetail.cons.length > 0 ? (
+                    <div className="grid grid-cols-2 gap-3">
+                      <ProsConsList label="👍 좋은 점" items={reviewDetail.pros} />
+                      <ProsConsList label="👎 아쉬운 점" items={reviewDetail.cons} />
+                    </div>
+                  ) : reviewDetail.pros.length > 0 ? (
+                    <ProsConsList label="👍 좋은 점" items={reviewDetail.pros} />
+                  ) : reviewDetail.cons.length > 0 ? (
+                    <ProsConsList label="👎 아쉬운 점" items={reviewDetail.cons} />
+                  ) : null}
+
+                  {(reviewDetail.hours || reviewDetail.fee) && (
+                    <div className="overflow-hidden rounded-lg border border-border-subtle">
+                      {reviewDetail.hours && (
+                        <div className="flex gap-3 border-b border-border-subtle p-2 last:border-b-0">
+                          <span className="w-14 shrink-0 text-xs font-medium text-ink-muted">운영시간</span>
+                          <span className="text-xs text-ink">{reviewDetail.hours}</span>
+                        </div>
+                      )}
+                      {reviewDetail.fee && (
+                        <div className="flex gap-3 p-2">
+                          <span className="w-14 shrink-0 text-xs font-medium text-ink-muted">요금</span>
+                          <span className="text-xs text-ink">{reviewDetail.fee}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {reviewDetail.tips.length > 0 && (
+                    <div className="rounded-lg bg-accent-bg p-3">
+                      <p className="mb-1 text-xs font-medium text-accent">💡 꿀팁</p>
+                      <ul className="flex flex-col gap-1">
+                        {reviewDetail.tips.map((tip, i) => (
+                          <li key={i} className="text-xs text-ink">
+                            {tip}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {reviewDetail.checklist.length > 0 && (
+                    <div>
+                      <p className="mb-1 text-xs font-medium text-ink-muted">✅ 체크리스트</p>
+                      <ul className="flex flex-col gap-1">
+                        {reviewDetail.checklist.map((item, i) => (
+                          <li key={i} className="flex items-start gap-1.5 text-xs text-ink">
+                            <span aria-hidden="true">☐</span>
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {reviewDetail.reviewSnippets.length > 0 && (
+                    <div className="border-t border-border-subtle pt-3">
+                      <p className="mb-2 text-xs font-medium text-ink-muted">실제 리뷰 원문</p>
+                      <ul className="flex flex-col gap-2">
+                        {reviewDetail.reviewSnippets.map((snippet, i) => (
+                          <li
+                            key={i}
+                            className="border-l-2 border-border-subtle pl-2 text-xs text-ink-muted"
+                          >
+                            “{snippet}”
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )
             )}
           </div>
         </div>

@@ -43,7 +43,13 @@ export async function searchPlaces(query: string): Promise<RecommendedPlace[]> {
 }
 
 export type PlaceDetail = Omit<RecommendedPlace, "mood" | "space"> & {
-  reviewSummary: string;
+  highlights: string;
+  pros: string[];
+  cons: string[];
+  hours: string | null;
+  fee: string | null;
+  tips: string[];
+  checklist: string[];
   reviewSnippets: string[];
 };
 
