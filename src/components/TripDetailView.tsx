@@ -115,8 +115,9 @@ export function TripDetailView({ trip: initialTrip }: { trip: TripDetail }) {
   async function handleToggleBookmark(placeId: number) {
     if (bookmarkedPlaceIds.has(placeId)) return;
     try {
-      await addBookmark(placeId);
+      const created = await addBookmark(placeId);
       setBookmarkedPlaceIds((current) => new Set(current).add(placeId));
+      setBookmarks((current) => [...current, created]);
     } catch {
       setError("찜하기에 실패했어요.");
     }
