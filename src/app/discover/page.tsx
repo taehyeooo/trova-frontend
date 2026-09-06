@@ -6,7 +6,7 @@ import { useAuth } from "@/lib/auth/AuthContext";
 import { KakaoMap } from "@/components/KakaoMap";
 import { RecommendedPlaceCard } from "@/components/RecommendedPlaceCard";
 import { LoadingProgress } from "@/components/LoadingProgress";
-import { recommend, type RecommendedPlace } from "@/lib/api/recommendations";
+import { recommend, searchPlaces, type RecommendedPlace } from "@/lib/api/recommendations";
 import { addBookmark, listBookmarks, removeBookmark } from "@/lib/api/bookmarks";
 
 // 서울시청 — 위치 접근을 거부했거나 사용할 수 없을 때 지도의 기본 중심
@@ -19,6 +19,8 @@ export default function DiscoverPage() {
   const [places, setPlaces] = useState<RecommendedPlace[]>([]);
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [hasSearched, setHasSearched] = useState(false);
   // placeId -> bookmarkId. 값이 있으면 찜한 상태, Map에 키가 없으면 찜 안 한 상태.
   const [bookmarksByPlaceId, setBookmarksByPlaceId] = useState<Map<number, number>>(new Map());
   const [pendingPlaceId, setPendingPlaceId] = useState<number | null>(null);
@@ -45,6 +47,7 @@ export default function DiscoverPage() {
 
   async function handleMapClick(latitude: number, longitude: number) {
     setPicked({ latitude, longitude });
+    setHasSearched(true);
     setSearching(true);
     setError(null);
     try {
@@ -52,6 +55,22 @@ export default function DiscoverPage() {
       setPlaces(result);
     } catch {
       setError("추천 장소를 불러오지 못했어요. 다시 시도해주세요.");
+    } finally {
+      setSearching(false);
+    }
+  }
+
+  async function handleSearch(e: React.FormEvent) {
+    e.preventDefault();
+    if (!query.trim() || searching) return;
+    setHasSearched(true);
+    setSearching(true);
+    setError(null);
+    try {
+      const result = await searchPlaces(query.trim());
+      setPlaces(result);
+    } catch {
+      setError("장소를 찾지 못했어요. 다른 검색어로 시도해보세요.");
     } finally {
       setSearching(false);
     }
@@ -90,7 +109,9 @@ export default function DiscoverPage() {
           </Link>
         )}
       </div>
-      <p className="mb-6 text-sm text-ink-muted">지도를 클릭하면 그 주변의 추천 장소를 보여줘요.</p>
+      <p className="mb-6 text-sm text-ink-muted">
+        장소를 검색하거나 지도를 클릭하면 추천 장소를 보여줘요.
+      </p>
 
       {authLoading ? (
         <LoadingProgress />
@@ -104,6 +125,23 @@ export default function DiscoverPage() {
         </p>
       ) : (
         <div className="flex flex-col gap-4">
+          <form onSubmit={handleSearch} className="flex gap-2">
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="장소 이름으로 검색 (예: 경복궁)"
+              className="flex-1 rounded-lg border border-border px-3 py-2 text-sm outline-none focus:border-accent"
+            />
+            <button
+              type="submit"
+              disabled={searching || !query.trim()}
+              className="shrink-0 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60"
+            >
+              검색
+            </button>
+          </form>
+
           <KakaoMap
             center={mapCenter}
             pins={picked ? [{ id: "picked", latitude: picked.latitude, longitude: picked.longitude }] : []}
@@ -127,10 +165,10 @@ export default function DiscoverPage() {
                 </li>
               ))}
             </ul>
-          ) : picked ? (
-            <p className="text-sm text-ink-muted">주변에서 추천할 만한 장소를 찾지 못했어요.</p>
+          ) : hasSearched ? (
+            <p className="text-sm text-ink-muted">추천할 만한 장소를 찾지 못했어요.</p>
           ) : (
-            <p className="text-sm text-ink-muted">지도를 클릭해서 시작해보세요.</p>
+            <p className="text-sm text-ink-muted">지도를 클릭하거나 장소를 검색해서 시작해보세요.</p>
           )}
         </div>
       )}

@@ -1,5 +1,7 @@
-import type { RecommendedPlace } from "@/lib/api/recommendations";
+import { useState } from "react";
+import { getPlaceDetails, type PlaceDetail, type RecommendedPlace } from "@/lib/api/recommendations";
 import { CategoryBadge } from "@/components/CategoryBadge";
+import { getCategoryVisual } from "@/lib/placeCategoryVisual";
 
 const MOOD_LABEL: Record<string, string> = {
   CALM: "차분함",
@@ -27,8 +29,34 @@ export function RecommendedPlaceCard({
   pending?: boolean;
   onToggleBookmark: () => void;
 }) {
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [reviewDetail, setReviewDetail] = useState<PlaceDetail | null>(null);
+  const [reviewLoading, setReviewLoading] = useState(false);
+  const visual = getCategoryVisual(place.category);
+
+  async function handleOpenReviews() {
+    setShowReviewModal(true);
+    if (reviewDetail) return;
+    setReviewLoading(true);
+    try {
+      const detail = await getPlaceDetails(place.id);
+      setReviewDetail(detail);
+    } catch {
+      setReviewDetail({ ...place, reviewSummary: "리뷰를 불러오지 못했어요.", reviewSnippets: [] });
+    } finally {
+      setReviewLoading(false);
+    }
+  }
+
   return (
     <div className="rounded-xl border border-border-subtle p-4">
+      <div
+        className={`mb-3 flex h-20 items-center justify-center rounded-lg text-3xl ${visual.bgClass}`}
+        aria-hidden="true"
+      >
+        {visual.icon}
+      </div>
+
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate font-medium text-ink">{place.name}</p>
@@ -65,6 +93,61 @@ export function RecommendedPlaceCard({
           {place.rating !== null && `⭐ ${place.rating.toFixed(1)}`}
           {place.userRatingCount !== null && ` (리뷰 ${place.userRatingCount}개)`}
         </p>
+      )}
+
+      <button
+        type="button"
+        onClick={handleOpenReviews}
+        className="mt-2 text-xs font-medium text-accent hover:underline"
+      >
+        리뷰 보기
+      </button>
+
+      {showReviewModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={() => setShowReviewModal(false)}
+        >
+          <div
+            className="max-h-[80vh] w-full max-w-md overflow-y-auto rounded-xl border border-border-subtle bg-bg p-5 shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-3 flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate font-medium text-ink">{place.name}</p>
+                {place.address && <p className="truncate text-xs text-ink-muted">{place.address}</p>}
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowReviewModal(false)}
+                aria-label="닫기"
+                className="shrink-0 text-ink-muted hover:text-ink"
+              >
+                ✕
+              </button>
+            </div>
+
+            {reviewLoading ? (
+              <p className="text-sm text-ink-muted">리뷰를 불러오는 중...</p>
+            ) : (
+              <>
+                <p className="text-sm text-ink-muted">{reviewDetail?.reviewSummary}</p>
+                {reviewDetail && reviewDetail.reviewSnippets.length > 0 && (
+                  <ul className="mt-3 flex flex-col gap-2">
+                    {reviewDetail.reviewSnippets.map((snippet, i) => (
+                      <li
+                        key={`${place.id}-${i}`}
+                        className="border-l-2 border-border-subtle pl-2 text-xs text-ink-muted"
+                      >
+                        “{snippet}”
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );
