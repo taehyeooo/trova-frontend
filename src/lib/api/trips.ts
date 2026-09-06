@@ -18,6 +18,11 @@ export type TripPlace = {
   address: string | null;
   visitOrder: number;
   source: "VIDEO" | "NORMAL";
+  googlePlaceId: string | null;
+  visitStartTime: string | null;
+  visitEndTime: string | null;
+  arrivalTransportMode: "WALK" | "TRANSIT" | "CAR" | null;
+  memo: string | null;
 };
 
 export type TripDay = {
@@ -78,12 +83,12 @@ export async function deleteTrip(id: number): Promise<void> {
   if (!res.ok) throw new Error(`DELETE /api/trips/${id} failed: ${res.status}`);
 }
 
-export async function addTripPlace(tripId: number, day: number, query: string): Promise<TripPlace> {
+export async function addTripPlace(tripId: number, day: number, googlePlaceId: string): Promise<TripPlace> {
   const res = await fetch(`${API_BASE_URL}/api/trips/${tripId}/days/${day}/places`, {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ query }),
+    body: JSON.stringify({ googlePlaceId }),
   });
   return parseOrThrow(res, `POST /api/trips/${tripId}/days/${day}/places`);
 }
@@ -115,4 +120,22 @@ export async function checkWeather(
     credentials: "include",
   });
   return parseOrThrow(res, `POST /api/trips/${tripId}/days/${day}/weather-check`);
+}
+
+export async function updateTripPlaceDetails(
+  id: number,
+  patch: {
+    visitStartTime?: string;
+    visitEndTime?: string;
+    arrivalTransportMode?: "WALK" | "TRANSIT" | "CAR";
+    memo?: string;
+  }
+): Promise<TripPlace> {
+  const res = await fetch(`${API_BASE_URL}/api/trip-places/${id}/details`, {
+    method: "PATCH",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(patch),
+  });
+  return parseOrThrow(res, `PATCH /api/trip-places/${id}/details`);
 }

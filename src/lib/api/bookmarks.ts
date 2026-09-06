@@ -4,6 +4,7 @@ export type Bookmark = {
   id: number;
   placeId: number;
   placeName: string;
+  googlePlaceId: string;
   mood: string | null;
   space: string | null;
   createdAt: string;
