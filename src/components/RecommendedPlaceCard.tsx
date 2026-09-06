@@ -2,6 +2,7 @@ import { useState } from "react";
 import { getPlaceDetails, type PlaceDetail, type RecommendedPlace } from "@/lib/api/recommendations";
 import { CategoryBadge } from "@/components/CategoryBadge";
 import { getCategoryVisual } from "@/lib/placeCategoryVisual";
+import { renderHighlightedText } from "@/lib/richText";
 
 const MOOD_LABEL: Record<string, string> = {
   CALM: "차분함",
@@ -58,6 +59,7 @@ export function RecommendedPlaceCard({
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [reviewDetail, setReviewDetail] = useState<PlaceDetail | null>(null);
   const [reviewLoading, setReviewLoading] = useState(false);
+  const [showRawReviews, setShowRawReviews] = useState(false);
   const visual = getCategoryVisual(place.category);
 
   async function handleOpenReviews() {
@@ -132,7 +134,10 @@ export function RecommendedPlaceCard({
       {showReviewModal && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-          onClick={() => setShowReviewModal(false)}
+          onClick={() => {
+            setShowReviewModal(false);
+            setShowRawReviews(false);
+          }}
         >
           <div
             className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-xl border border-border-subtle bg-bg p-5 shadow-lg"
@@ -145,7 +150,10 @@ export function RecommendedPlaceCard({
               </div>
               <button
                 type="button"
-                onClick={() => setShowReviewModal(false)}
+                onClick={() => {
+            setShowReviewModal(false);
+            setShowRawReviews(false);
+          }}
                 aria-label="닫기"
                 className="shrink-0 text-ink-muted hover:text-ink"
               >
@@ -158,7 +166,7 @@ export function RecommendedPlaceCard({
             ) : (
               reviewDetail && (
                 <div className="flex flex-col gap-4">
-                  <p className="text-sm italic text-ink">{reviewDetail.highlights}</p>
+                  <p className="text-sm text-ink">{renderHighlightedText(reviewDetail.highlights)}</p>
 
                   {reviewDetail.pros.length > 0 && reviewDetail.cons.length > 0 ? (
                     <div className="grid grid-cols-2 gap-3">
@@ -217,17 +225,25 @@ export function RecommendedPlaceCard({
 
                   {reviewDetail.reviewSnippets.length > 0 && (
                     <div className="border-t border-border-subtle pt-3">
-                      <p className="mb-2 text-xs font-medium text-ink-muted">실제 리뷰 원문</p>
-                      <ul className="flex flex-col gap-2">
-                        {reviewDetail.reviewSnippets.map((snippet, i) => (
-                          <li
-                            key={i}
-                            className="border-l-2 border-border-subtle pl-2 text-xs text-ink-muted"
-                          >
-                            “{snippet}”
-                          </li>
-                        ))}
-                      </ul>
+                      <button
+                        type="button"
+                        onClick={() => setShowRawReviews((current) => !current)}
+                        className="text-xs font-medium text-ink-muted hover:text-ink"
+                      >
+                        {showRawReviews ? "실제 리뷰 원문 접기 ▲" : "실제 리뷰 원문 보기 ▼"}
+                      </button>
+                      {showRawReviews && (
+                        <ul className="mt-2 flex flex-col gap-2">
+                          {reviewDetail.reviewSnippets.map((snippet, i) => (
+                            <li
+                              key={i}
+                              className="border-l-2 border-border-subtle pl-2 text-xs text-ink-muted"
+                            >
+                              “{snippet}”
+                            </li>
+                          ))}
+                        </ul>
+                      )}
                     </div>
                   )}
                 </div>

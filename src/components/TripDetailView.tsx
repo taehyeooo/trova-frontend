@@ -5,6 +5,7 @@ import { KakaoMap, type MapPin } from "@/components/KakaoMap";
 import { getDayColor } from "@/lib/itinerary";
 import { addBookmark, listBookmarks, type Bookmark } from "@/lib/api/bookmarks";
 import { getPlaceDetails, searchPlaces, type PlaceDetail, type RecommendedPlace } from "@/lib/api/recommendations";
+import { renderHighlightedText } from "@/lib/richText";
 import {
   addTripPlace,
   checkWeather,
@@ -38,6 +39,7 @@ export function TripDetailView({ trip: initialTrip }: { trip: TripDetail }) {
     >
   >(new Map());
   const [detailsLoadingId, setDetailsLoadingId] = useState<number | null>(null);
+  const [showRawReviews, setShowRawReviews] = useState(false);
   const [editingField, setEditingField] = useState<{ placeId: number; field: "time" | "transport" | "memo" } | null>(
     null
   );
@@ -101,6 +103,7 @@ export function TripDetailView({ trip: initialTrip }: { trip: TripDetail }) {
       return;
     }
     setExpandedPlaceId(placeId);
+    setShowRawReviews(false);
     if (reviewSummaries.has(placeId)) return;
     setDetailsLoadingId(placeId);
     try {
@@ -471,7 +474,7 @@ export function TripDetailView({ trip: initialTrip }: { trip: TripDetail }) {
                           if (!detail) return null;
                           return (
                             <>
-                              <p className="text-xs italic text-ink">{detail.highlights}</p>
+                              <p className="text-xs text-ink">{renderHighlightedText(detail.highlights)}</p>
 
                               {(detail.pros.length > 0 || detail.cons.length > 0) && (
                                 <div className="grid grid-cols-2 gap-2">
@@ -533,15 +536,26 @@ export function TripDetailView({ trip: initialTrip }: { trip: TripDetail }) {
                               )}
 
                               {detail.reviewSnippets.length > 0 && (
-                                <div className="flex flex-col gap-1">
-                                  {detail.reviewSnippets.slice(0, 3).map((snippet, i) => (
-                                    <p
-                                      key={i}
-                                      className="border-l-2 border-border-subtle pl-2 text-xs text-ink-muted"
-                                    >
-                                      &ldquo;{snippet}&rdquo;
-                                    </p>
-                                  ))}
+                                <div>
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowRawReviews((current) => !current)}
+                                    className="text-[11px] font-medium text-ink-muted hover:text-ink"
+                                  >
+                                    {showRawReviews ? "실제 리뷰 원문 접기 ▲" : "실제 리뷰 원문 보기 ▼"}
+                                  </button>
+                                  {showRawReviews && (
+                                    <div className="mt-1 flex flex-col gap-1">
+                                      {detail.reviewSnippets.slice(0, 3).map((snippet, i) => (
+                                        <p
+                                          key={i}
+                                          className="border-l-2 border-border-subtle pl-2 text-xs text-ink-muted"
+                                        >
+                                          &ldquo;{snippet}&rdquo;
+                                        </p>
+                                      ))}
+                                    </div>
+                                  )}
                                 </div>
                               )}
                             </>
