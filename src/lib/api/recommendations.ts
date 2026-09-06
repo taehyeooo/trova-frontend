@@ -31,3 +31,23 @@ export async function recommend(
   }
   return res.json();
 }
+
+export async function searchPlaces(query: string): Promise<RecommendedPlace[]> {
+  const res = await fetch(`${API_BASE_URL}/api/places/search?query=${encodeURIComponent(query)}`, {
+    credentials: "include",
+  });
+  if (!res.ok) {
+    throw new Error(`GET /api/places/search failed: ${res.status}`);
+  }
+  return res.json();
+}
+
+export type PlaceDetail = RecommendedPlace & { reviewSummary: string; reviewSnippets: string[] };
+
+export async function getPlaceDetails(id: number): Promise<PlaceDetail> {
+  const res = await fetch(`${API_BASE_URL}/api/places/${id}/details`, { credentials: "include" });
+  if (!res.ok) {
+    throw new Error(`GET /api/places/${id}/details failed: ${res.status}`);
+  }
+  return res.json();
+}
