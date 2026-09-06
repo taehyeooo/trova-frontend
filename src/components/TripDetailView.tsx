@@ -43,10 +43,12 @@ export function TripDetailView({ trip: initialTrip }: { trip: TripDetail }) {
   const [weatherMessage, setWeatherMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    listBookmarks().then((result) => {
-      setBookmarks(result);
-      setBookmarkedPlaceIds(new Set(result.map((b) => b.placeId)));
-    });
+    listBookmarks()
+      .then((result) => {
+        setBookmarks(result);
+        setBookmarkedPlaceIds(new Set(result.map((b) => b.placeId)));
+      })
+      .catch(() => setError("찜한 장소를 불러오지 못했어요."));
   }, []);
 
   const dayColor = getDayColor(activeDay);
@@ -117,7 +119,7 @@ export function TripDetailView({ trip: initialTrip }: { trip: TripDetail }) {
     try {
       const created = await addBookmark(placeId);
       setBookmarkedPlaceIds((current) => new Set(current).add(placeId));
-      setBookmarks((current) => [...current, created]);
+      setBookmarks((current) => [created, ...current]);
     } catch {
       setError("찜하기에 실패했어요.");
     }

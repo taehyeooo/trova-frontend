@@ -42,7 +42,10 @@ export async function searchPlaces(query: string): Promise<RecommendedPlace[]> {
   return res.json();
 }
 
-export type PlaceDetail = RecommendedPlace & { reviewSummary: string; reviewSnippets: string[] };
+export type PlaceDetail = Omit<RecommendedPlace, "mood" | "space"> & {
+  reviewSummary: string;
+  reviewSnippets: string[];
+};
 
 export async function getPlaceDetails(id: number): Promise<PlaceDetail> {
   const res = await fetch(`${API_BASE_URL}/api/places/${id}/details`, { credentials: "include" });
